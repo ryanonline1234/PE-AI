@@ -99,6 +99,44 @@ function CardTitle({ children }) {
   );
 }
 
+const MAX_W = 740;
+
+function Layout({ view, reset, children }) {
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 60px" }}>
+      {/* Top bar */}
+      <div style={{
+        width: "100%", maxWidth: MAX_W,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "20px 0 16px",
+        borderBottom: "1px solid var(--border)",
+        marginBottom: 36,
+      }}>
+        <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 28, fontWeight: 900, letterSpacing: -0.5 }}>
+          PE<span style={{ color: "var(--accent)" }}>.</span>AI
+        </div>
+        {view !== "landing" && (
+          <button
+            onClick={reset}
+            className="no-print"
+            style={{
+              background: "var(--surface2)", border: "1px solid var(--border)",
+              color: "var(--muted)", padding: "8px 16px", borderRadius: 8,
+              cursor: "pointer", fontSize: 14, fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            ← Back
+          </button>
+        )}
+      </div>
+
+      <div style={{ width: "100%", maxWidth: MAX_W }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function BtnPrimary({ children, onClick, disabled, style }) {
   return (
     <button
@@ -361,47 +399,6 @@ export default function PEApp() {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // Shared layout wrapper
-  // ─────────────────────────────────────────────────────────────
-
-  const MAX_W = 740;
-
-  function Layout({ children }) {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 60px" }}>
-        {/* Top bar */}
-        <div style={{
-          width: "100%", maxWidth: MAX_W,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "20px 0 16px",
-          borderBottom: "1px solid var(--border)",
-          marginBottom: 36,
-        }}>
-          <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 28, fontWeight: 900, letterSpacing: -0.5 }}>
-            PE<span style={{ color: "var(--accent)" }}>.</span>AI
-          </div>
-          {view !== "landing" && (
-            <button
-              onClick={reset}
-              className="no-print"
-              style={{
-                background: "var(--surface2)", border: "1px solid var(--border)",
-                color: "var(--muted)", padding: "8px 16px", borderRadius: 8,
-                cursor: "pointer", fontSize: 14, fontFamily: "DM Sans, sans-serif",
-              }}
-            >
-              ← Back
-            </button>
-          )}
-        </div>
-
-        <div style={{ width: "100%", maxWidth: MAX_W }}>
-          {children}
-        </div>
-      </div>
-    );
-  }
 
   // ─────────────────────────────────────────────────────────────
   // Views
@@ -409,7 +406,7 @@ export default function PEApp() {
 
   // ── LANDING ──────────────────────────────────────────────────
   if (view === "landing") return (
-    <Layout>
+    <Layout view={view} reset={reset}>
       <div style={{ textAlign: "center", paddingTop: 16 }}>
         <div style={{
           display: "inline-block",
@@ -470,7 +467,7 @@ export default function PEApp() {
 
   // ── TEACHER ───────────────────────────────────────────────────
   if (view === "teacher") return (
-    <Layout>
+    <Layout view={view} reset={reset}>
       <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 42, fontWeight: 900, textTransform: "uppercase", letterSpacing: -1, marginBottom: 4 }}>
         Teacher Dashboard
       </div>
@@ -600,7 +597,7 @@ export default function PEApp() {
 
   // ── STUDENT: enter code ───────────────────────────────────────
   if (view === "student") return (
-    <Layout>
+    <Layout view={view} reset={reset}>
       <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 42, fontWeight: 900, textTransform: "uppercase", letterSpacing: -1, marginBottom: 4 }}>
         Join Your Class
       </div>
@@ -629,7 +626,7 @@ export default function PEApp() {
 
   // ── STUDENT: form ─────────────────────────────────────────────
   if (view === "student-form") return (
-    <Layout>
+    <Layout view={view} reset={reset}>
       {loading ? <Spinner /> : (
         <>
           <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 42, fontWeight: 900, textTransform: "uppercase", letterSpacing: -1, marginBottom: 4 }}>
@@ -672,7 +669,7 @@ export default function PEApp() {
 
   // ── WORKOUT DISPLAY ───────────────────────────────────────────
   if (view === "workout" && workout) return (
-    <Layout>
+    <Layout view={view} reset={reset}>
       {/* Hero */}
       <div className="print-card" style={{
         background: "linear-gradient(135deg, var(--surface) 0%, #1a1a2e 100%)",
