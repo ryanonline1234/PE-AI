@@ -1,0 +1,34 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0a0a0f;
+  --surface:  #13131c;
+  --surface2: #1c1c2a;
+  --border:   #2a2a3e;
+  --accent:   #c8ff00;
+  --accent2:  #00e5ff;
+  --text:     #f0f0f8;
+  --muted:    #7070a0;
+  --danger:   #ff4d6d;
+  --radius:   12px;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "DM Sans", sans-serif;
+  min-height: 100vh;
+}
+
+/* ── Print styles ─────────────────────────────────── */
+@media print {
+  body { background: #fff; color: #000; }
+  .no-print { display: none !important; }
+  .print-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    break-inside: avoid;
+  }
+}
