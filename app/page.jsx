@@ -485,7 +485,8 @@ export default function PEApp() {
           <Field label="Class Code">
             <TextInput
               value={loadCodeInput}
-              onChange={v => setLoadCodeInput(v.toUpperCase().slice(0, 6))}
+              onChange={v => setLoadCodeInput(v.replace(/[^A-Za-z0-9]/g, "").slice(0, 6))}
+              onBlur={() => setLoadCodeInput(v => v.toUpperCase())}
               placeholder="ABCD12"
               maxLength={6}
               style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 28, fontWeight: 700, letterSpacing: 6, textAlign: "center" }}
@@ -611,7 +612,8 @@ export default function PEApp() {
         <Field label="Class Code">
           <TextInput
             value={studentCode}
-            onChange={v => setStudentCode(v.toUpperCase().slice(0, 6))}
+            onChange={v => setStudentCode(v.replace(/[^A-Za-z0-9]/g, "").slice(0, 6))}
+            onBlur={() => setStudentCode(v => v.toUpperCase())}
             placeholder="ABCD12"
             maxLength={6}
             style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 36, fontWeight: 700, letterSpacing: 8, textAlign: "center" }}
