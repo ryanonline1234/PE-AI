@@ -261,6 +261,10 @@ function Alert({ type, children }) {
   );
 }
 
+function youtubeSearchUrl(exerciseName) {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(exerciseName + " exercise how to")}`;
+}
+
 function Spinner() {
   return (
     <div style={{ textAlign: "center", padding: "60px 20px" }}>
@@ -307,6 +311,7 @@ export default function PEApp() {
   const [studentName,    setStudentName]    = useState("");
   const [fitnessLevel,   setFitnessLevel]   = useState("moderate");
   const [limitations,    setLimitations]    = useState("");
+  const [expandedExercise, setExpandedExercise] = useState(null);
 
   // Shared
   const [loading,        setLoading]        = useState(false);
@@ -721,25 +726,73 @@ export default function PEApp() {
         <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "var(--muted)", paddingBottom: 10, borderBottom: "1px solid var(--border)", marginBottom: 12 }}>
           💪 Main Workout
         </div>
-        {workout.exercises?.map((ex, i) => (
-          <div key={i} style={{
-            background: "var(--surface2)", border: "1px solid var(--border)",
-            borderRadius: 10, padding: 16, marginBottom: 10,
-            display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
-          }}>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>{ex.name}</div>
-              <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.4 }}>{ex.tip}</div>
-            </div>
-            <div style={{ textAlign: "right", flexShrink: 0 }}>
-              <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 16, fontWeight: 700, color: "var(--accent)", whiteSpace: "nowrap" }}>
-                {ex.sets} × {ex.reps}
+        {workout.exercises?.map((ex, i) => {
+          const isExpanded = expandedExercise === i;
+          return (
+            <div
+              key={i}
+              onClick={() => setExpandedExercise(prev => (prev === i ? null : i))}
+              style={{
+                background: "var(--surface2)", border: "1px solid var(--border)",
+                borderRadius: 10, padding: 16, marginBottom: 10,
+                cursor: "pointer",
+                display: "flex", flexDirection: "column", gap: 12,
+                transition: "box-shadow 0.2s",
+                boxShadow: isExpanded ? "0 9px 18px rgba(0,0,0,0.08)" : "none",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>{ex.name}</div>
+                  <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.4 }}>{ex.tip}</div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 16, fontWeight: 700, color: "var(--accent)", whiteSpace: "nowrap" }}>
+                    {ex.sets} × {ex.reps}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Rest {ex.rest}</div>
+                  <div style={{ fontSize: 12, color: "var(--accent2)", marginTop: 2 }}>{ex.calories} kcal</div>
+                </div>
+                <div style={{ color: "var(--muted)", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.25s" }}>
+                  ▾
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Rest {ex.rest}</div>
-              <div style={{ fontSize: 12, color: "var(--accent2)", marginTop: 2 }}>{ex.calories} kcal</div>
+
+              <div style={{
+                maxHeight: isExpanded ? 240 : 0,
+                overflow: "hidden",
+                transition: "max-height 0.25s ease",
+                borderTop: `1px solid var(--border)`,
+                paddingTop: isExpanded ? 12 : 0,
+              }}>
+                {isExpanded && ex.howTo && ex.howTo.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: "var(--muted)", marginBottom: 8 }}>
+                      HOW TO DO IT
+                    </div>
+                    <ol style={{ margin: 0, paddingLeft: 20, marginBottom: 8 }}>
+                      {ex.howTo.map((step, idx) => (
+                        <li key={idx} style={{ fontSize: 13, marginBottom: 4 }}>{step}</li>
+                      ))}
+                    </ol>
+                  </>
+                )}
+
+                {isExpanded && (
+                  <a
+                    href={youtubeSearchUrl(ex.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 12, color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    Watch on YouTube ↗
+                  </a>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </Card>
 
       {/* Cool-down */}

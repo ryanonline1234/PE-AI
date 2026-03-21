@@ -104,7 +104,8 @@ Use exactly this structure:
       "reps": "e.g. 12 reps or 30 sec",
       "rest": "e.g. 30 sec",
       "calories": <integer — estimated for this exercise>,
-      "tip": "One-sentence form or safety tip"
+      "tip": "One-sentence form or safety tip",
+      "howTo": ["Step 1 instruction", "Step 2 instruction", "Step 3 instruction"]
     }
   ],
   "cooldown": [
