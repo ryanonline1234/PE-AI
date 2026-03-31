@@ -15,7 +15,7 @@ function genCode() {
 const DEFAULT_CONFIG = {
   duration: 30,
   minCalories: 150,
-  equipment: "none",
+  equipment: "",
   intensity: "moderate",
   focus: "mixed",
   customPrompt: "",
@@ -311,7 +311,10 @@ export default function PEApp() {
   const [studentName,    setStudentName]    = useState("");
   const [fitnessLevel,   setFitnessLevel]   = useState("moderate");
   const [limitations,    setLimitations]    = useState("");
+  const [preferences,    setPreferences]    = useState("");
   const [expandedExercise, setExpandedExercise] = useState(null);
+  const [showRegeneratePanel, setShowRegeneratePanel] = useState(false);
+  const [regenerateFeedback,  setRegenerateFeedback]  = useState("");
 
   // Shared
   const [loading,        setLoading]        = useState(false);
@@ -383,12 +386,14 @@ export default function PEApp() {
     setLoading(false);
   }
 
-  async function generateWorkout() {
+  async function generateWorkout(feedback = "") {
     setLoading(true); setError(""); setWorkout(null);
+    setShowRegeneratePanel(false); setRegenerateFeedback("");
     try {
       const w = await apiGenerateWorkout({
         code: studentCode.toUpperCase(),
-        studentName, fitnessLevel, limitations,
+        studentName, fitnessLevel, limitations, preferences,
+        regenerateFeedback: feedback,
       });
       setWorkout(w);
       setView("workout");
@@ -570,11 +575,11 @@ export default function PEApp() {
             </Field>
 
             <Field label="Equipment Available">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {[["No Equipment","none"],["Basic Gear","basic"],["Full Gym","gym"]].map(([l,v]) =>
-                  <Chip key={v} label={l} value={v} current={config.equipment} onChange={val => cfgSet("equipment", val)} />
-                )}
-              </div>
+              <Textarea
+                value={config.equipment}
+                onChange={v => cfgSet("equipment", v.slice(0, 500))}
+                placeholder="e.g. No equipment — bodyweight only, resistance bands, mats, jump ropes, full gym with free weights…"
+              />
             </Field>
 
             <Field label="Custom Instructions (optional — max 500 chars)">
@@ -659,6 +664,14 @@ export default function PEApp() {
                 value={limitations}
                 onChange={setLimitations}
                 placeholder="e.g. Sprained left ankle, avoid jumping. Leave blank if you're good to go!"
+              />
+            </Field>
+
+            <Field label="Personal Preferences (optional)">
+              <Textarea
+                value={preferences}
+                onChange={v => setPreferences(v.slice(0, 300))}
+                placeholder="e.g. I love music-based exercises, hate running, enjoy partner workouts, prefer bodyweight over weights…"
               />
             </Field>
           </Card>
@@ -815,8 +828,25 @@ export default function PEApp() {
 
 
 
+      {showRegeneratePanel && (
+        <div className="no-print" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 18, marginTop: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>What would you like to improve or add?</div>
+          <Textarea
+            value={regenerateFeedback}
+            onChange={v => setRegenerateFeedback(v.slice(0, 300))}
+            placeholder="e.g. More core exercises, less running, add stretching at the end…"
+          />
+          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <BtnSecondary style={{ flex: 1 }} onClick={() => setShowRegeneratePanel(false)}>Cancel</BtnSecondary>
+            <BtnPrimary style={{ flex: 2 }} onClick={() => generateWorkout(regenerateFeedback)} disabled={loading}>
+              ⚡ Regenerate
+            </BtnPrimary>
+          </div>
+        </div>
+      )}
+
       <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 8 }}>
-        <BtnSecondary style={{ flex: 1 }} onClick={() => { setWorkout(null); setView("student-form"); }}>
+        <BtnSecondary style={{ flex: 1 }} onClick={() => { setShowRegeneratePanel(v => !v); }}>
           ↩ Regenerate
         </BtnSecondary>
         <BtnPrimary style={{ flex: 2 }} onClick={() => window.print()}>

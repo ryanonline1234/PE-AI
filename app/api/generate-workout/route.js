@@ -5,11 +5,6 @@ import { verifySecret } from "@/lib/auth";
 
 const client = new Anthropic(); // automatically reads ANTHROPIC_API_KEY from env
 
-const EQUIPMENT_LABELS = {
-  none:  "No equipment — bodyweight only",
-  basic: "Basic equipment (resistance bands, mats, jump ropes)",
-  gym:   "Full gym (free weights, machines, cardio equipment)",
-};
 
 const FOCUS_LABELS = {
   mixed:       "Mixed — balanced cardio, strength, and flexibility",
@@ -42,7 +37,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { code, studentName, fitnessLevel, limitations } = body;
+  const { code, studentName, fitnessLevel, limitations, preferences, regenerateFeedback } = body;
 
   if (!code || !/^[A-Z0-9]{6}$/.test(code)) {
     return NextResponse.json({ error: "Invalid class code" }, { status: 400 });
@@ -65,8 +60,10 @@ export async function POST(request) {
   // 4. Validate student-supplied fields
   const validLevels = ["beginner", "moderate", "advanced"];
   const level = validLevels.includes(fitnessLevel) ? fitnessLevel : "moderate";
-  const name  = sanitizeStudentInput(studentName  || "");
-  const notes = sanitizeStudentInput(limitations  || "None reported");
+  const name     = sanitizeStudentInput(studentName       || "");
+  const notes    = sanitizeStudentInput(limitations       || "None reported");
+  const prefs    = sanitizeStudentInput(preferences       || "");
+  const feedback = sanitizeStudentInput(regenerateFeedback || "");
 
   // 5. Build system prompt from the teacher-controlled config
   const systemPrompt = `You are a certified PE coach AI generating safe, age-appropriate, school-approved workouts for high school students.
@@ -74,7 +71,7 @@ export async function POST(request) {
 CLASS PARAMETERS (set by the teacher — these are fixed and must be respected):
 - Total workout duration: ${cfg.duration} minutes
 - Minimum calories to burn: ${cfg.minCalories} kcal
-- Available equipment: ${EQUIPMENT_LABELS[cfg.equipment] ?? cfg.equipment}
+- Available equipment: ${cfg.equipment || "Not specified"}
 - Intensity level: ${cfg.intensity}
 - Workout focus: ${FOCUS_LABELS[cfg.focus] ?? cfg.focus}
 ${cfg.customPrompt ? `- Additional teacher instructions: ${cfg.customPrompt}` : ""}
@@ -116,6 +113,8 @@ Use exactly this structure:
   const userMessage = `Student name: ${name || "Anonymous"}
 Fitness level: ${level}
 Injuries or physical limitations: ${notes}
+${prefs    ? `Personal preferences: ${prefs}`            : ""}
+${feedback ? `Improvement requests for this regeneration: ${feedback}` : ""}
 
 Please generate my workout.`;
 
