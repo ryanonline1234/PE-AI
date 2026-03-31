@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { apiSaveClass, apiGetClass, apiGenerateWorkout } from "@/lib/api";
+import { apiSaveClass, apiGetClass, apiGenerateWorkout, apiSubmitReview, apiGenerateReport } from "@/lib/api";
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -305,6 +305,11 @@ export default function PEApp() {
   const [loadCodeInput,  setLoadCodeInput]  = useState("");
   const [saveMsg,        setSaveMsg]        = useState("");
   const [copied,         setCopied]         = useState(false);
+  const [report,         setReport]         = useState(null);
+  const [reportMeta,     setReportMeta]     = useState(null);
+  const [reportMsg,      setReportMsg]      = useState("");
+  const [reportLoading,  setReportLoading]  = useState(false);
+  const [reportError,    setReportError]    = useState("");
 
   // Student state
   const [studentCode,    setStudentCode]    = useState("");
@@ -315,6 +320,12 @@ export default function PEApp() {
   const [expandedExercise, setExpandedExercise] = useState(null);
   const [showRegeneratePanel, setShowRegeneratePanel] = useState(false);
   const [regenerateFeedback,  setRegenerateFeedback]  = useState("");
+  const [reviewRating,   setReviewRating]   = useState(0);
+  const [reviewHover,    setReviewHover]    = useState(0);
+  const [reviewComment,  setReviewComment]  = useState("");
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewLoading,  setReviewLoading]  = useState(false);
+  const [reviewError,    setReviewError]    = useState("");
 
   // Shared
   const [loading,        setLoading]        = useState(false);
@@ -389,6 +400,7 @@ export default function PEApp() {
   async function generateWorkout(feedback = "") {
     setLoading(true); setError(""); setWorkout(null);
     setShowRegeneratePanel(false); setRegenerateFeedback("");
+    setReviewRating(0); setReviewComment(""); setReviewSubmitted(false); setReviewError("");
     try {
       const w = await apiGenerateWorkout({
         code: studentCode.toUpperCase(),
@@ -401,6 +413,35 @@ export default function PEApp() {
       setError(e.message);
     }
     setLoading(false);
+  }
+
+  async function submitReview() {
+    if (!reviewRating) return;
+    setReviewLoading(true); setReviewError("");
+    try {
+      await apiSubmitReview({
+        code: studentCode.toUpperCase(),
+        studentName,
+        rating: reviewRating,
+        comment: reviewComment,
+      });
+      setReviewSubmitted(true);
+    } catch (e) {
+      setReviewError(e.message);
+    }
+    setReviewLoading(false);
+  }
+
+  async function generateDayReport() {
+    setReportLoading(true); setReportError(""); setReport(null); setReportMeta(null); setReportMsg("");
+    try {
+      const { report: r, meta, message } = await apiGenerateReport(classCode);
+      if (!r) { setReportMsg(message || "No reviews yet."); }
+      else { setReport(r); setReportMeta(meta); }
+    } catch (e) {
+      setReportError(e.message);
+    }
+    setReportLoading(false);
   }
 
   function copyCode() {
@@ -598,6 +639,42 @@ export default function PEApp() {
             {loading ? "Saving…" : "Save Class Settings"}
           </BtnPrimary>
           {saveMsg && <Alert type="success">{saveMsg}</Alert>}
+
+          {/* Today's report */}
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 22, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>
+              Today's Workout Report
+            </div>
+            <BtnSecondary onClick={generateDayReport} disabled={reportLoading}>
+              {reportLoading ? "Generating…" : "Generate Today's Report"}
+            </BtnSecondary>
+
+            {reportMsg && (
+              <div style={{ color: "var(--muted)", fontSize: 14, marginTop: 12 }}>{reportMsg}</div>
+            )}
+
+            {reportMeta && (
+              <div style={{ display: "flex", gap: 24, margin: "16px 0 8px", flexWrap: "wrap" }}>
+                {[
+                  [reportMeta.total, "Responses"],
+                  [`${reportMeta.avgRating} / 5`, "Avg Rating"],
+                ].map(([val, lbl]) => (
+                  <div key={lbl}>
+                    <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 28, fontWeight: 700, color: "var(--accent2)", lineHeight: 1 }}>{val}</div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.8px", marginTop: 2 }}>{lbl}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {report && (
+              <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 18, marginTop: 8, fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                {report}
+              </div>
+            )}
+
+            {reportError && <Alert type="error">{reportError}</Alert>}
+          </div>
         </>
       )}
 
@@ -852,6 +929,59 @@ export default function PEApp() {
         <BtnPrimary style={{ flex: 2 }} onClick={() => window.print()}>
           🖨 Print Workout
         </BtnPrimary>
+      </div>
+
+      {/* Review section */}
+      <div className="no-print" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius)", padding: 20, marginTop: 16 }}>
+        <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 18, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 }}>
+          Rate Your Workout
+        </div>
+
+        {reviewSubmitted ? (
+          <div style={{ color: "var(--accent)", fontWeight: 600, fontSize: 15, textAlign: "center", padding: "8px 0" }}>
+            Thanks for your feedback!
+          </div>
+        ) : (
+          <>
+            {/* Stars */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+              {[1,2,3,4,5].map(n => (
+                <span
+                  key={n}
+                  onClick={() => setReviewRating(n)}
+                  onMouseEnter={() => setReviewHover(n)}
+                  onMouseLeave={() => setReviewHover(0)}
+                  style={{
+                    fontSize: 36,
+                    cursor: "pointer",
+                    color: n <= (reviewHover || reviewRating) ? "var(--accent)" : "var(--border)",
+                    transition: "color 0.1s",
+                    userSelect: "none",
+                  }}
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+
+            <Field label="Comments (optional)">
+              <Textarea
+                value={reviewComment}
+                onChange={v => setReviewComment(v.slice(0, 500))}
+                placeholder="What did you enjoy? What was too hard or too easy?"
+              />
+            </Field>
+
+            <BtnPrimary
+              onClick={submitReview}
+              disabled={!reviewRating || reviewLoading}
+              style={{ marginTop: 12 }}
+            >
+              {reviewLoading ? "Submitting…" : "Submit Review"}
+            </BtnPrimary>
+            {reviewError && <Alert type="error">{reviewError}</Alert>}
+          </>
+        )}
       </div>
     </Layout>
   );
