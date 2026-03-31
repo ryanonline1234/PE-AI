@@ -676,7 +676,7 @@ export default function PEApp() {
             </Field>
           </Card>
 
-          <BtnPrimary onClick={generateWorkout} disabled={loading}>
+          <BtnPrimary onClick={() => generateWorkout()} disabled={loading}>
             ⚡ Generate My Workout
           </BtnPrimary>
           {error && <Alert type="error">{error}</Alert>}
