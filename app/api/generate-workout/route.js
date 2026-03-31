@@ -110,8 +110,7 @@ Use exactly this structure:
   ],
   "cooldown": [
     { "name": "stretch or exercise name", "duration": "e.g. 1 min", "description": "Brief instruction" }
-  ],
-  "coachNote": "One short motivational sentence for this student"
+  ]
 }`;
 
   const userMessage = `Student name: ${name || "Anonymous"}

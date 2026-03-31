@@ -813,18 +813,7 @@ export default function PEApp() {
         </Card>
       )}
 
-      {/* Coach note */}
-      {workout.coachNote && (
-        <div style={{
-          background: "rgba(200,255,0,0.06)", border: "1px solid rgba(200,255,0,0.2)",
-          borderRadius: 10, padding: 18, marginBottom: 16,
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--accent)", marginBottom: 6 }}>
-            Coach Says
-          </div>
-          <div style={{ fontSize: 15, fontStyle: "italic", lineHeight: 1.6 }}>"{workout.coachNote}"</div>
-        </div>
-      )}
+
 
       <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 8 }}>
         <BtnSecondary style={{ flex: 1 }} onClick={() => { setWorkout(null); setView("student-form"); }}>
