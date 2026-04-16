@@ -489,17 +489,18 @@ export default function PEApp() {
         {/* How it works */}
         <div style={{ display: "flex", justifyContent: "center", gap: 0, marginBottom: 48, position: "relative" }}>
           {[
-            { step: "1", text: "Teacher creates a class & sets parameters" },
-            { step: "2", text: "Students enter the class code" },
+            { step: "1", text: "Your teacher sets it up once", muted: true },
+            { step: "2", text: "Enter your class code" },
             { step: "3", text: "AI builds a personalized workout" },
-            { step: "4", text: "Students rate & give feedback" },
-          ].map(({ step, text }, i, arr) => (
+            { step: "4", text: "Take it to the floor — print or screenshot your workout" },
+          ].map(({ step, text, muted }, i, arr) => (
             <div key={step} style={{ display: "flex", alignItems: "center" }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "clamp(80px, 18vw, 130px)" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "clamp(80px, 18vw, 130px)", opacity: muted ? 0.45 : 1 }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: "50%",
-                  background: "rgba(200,255,0,0.12)", border: "1px solid rgba(200,255,0,0.35)",
-                  color: "var(--accent)", fontWeight: 700, fontSize: 15,
+                  background: muted ? "rgba(255,255,255,0.05)" : "rgba(200,255,0,0.12)",
+                  border: `1px solid ${muted ? "rgba(255,255,255,0.15)" : "rgba(200,255,0,0.35)"}`,
+                  color: muted ? "var(--muted)" : "var(--accent)", fontWeight: 700, fontSize: 15,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0,
                 }}>
