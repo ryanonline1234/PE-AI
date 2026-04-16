@@ -486,6 +486,34 @@ export default function PEApp() {
           Teachers set the parameters. Students get personalized AI-generated workouts. Fast, safe, and built for the gym floor.
         </p>
 
+        {/* How it works */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 0, marginBottom: 48, position: "relative" }}>
+          {[
+            { step: "1", text: "Teacher creates a class & sets parameters" },
+            { step: "2", text: "Students enter the class code" },
+            { step: "3", text: "AI builds a personalized workout" },
+            { step: "4", text: "Students rate & give feedback" },
+          ].map(({ step, text }, i, arr) => (
+            <div key={step} style={{ display: "flex", alignItems: "center" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, width: "clamp(80px, 18vw, 130px)" }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: "rgba(200,255,0,0.12)", border: "1px solid rgba(200,255,0,0.35)",
+                  color: "var(--accent)", fontWeight: 700, fontSize: 15,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  {step}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.4, textAlign: "center" }}>{text}</div>
+              </div>
+              {i < arr.length - 1 && (
+                <div style={{ width: "clamp(12px, 3vw, 28px)", height: 1, background: "var(--border)", flexShrink: 0, marginBottom: 28 }} />
+              )}
+            </div>
+          ))}
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           {[
             { icon: "🏫", label: "I'm a Teacher", desc: "Create a class, set workout parameters, and share a code with your students.", action: () => { setView("teacher"); createNewClass(); } },
