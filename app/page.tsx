@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { apiSaveClass, apiGetClass, apiGenerateWorkout } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { ClassConfig, FitnessLevel, Workout } from "@/lib/types";
 
 type View = "landing" | "teacher" | "student" | "student-form" | "workout";
@@ -40,18 +41,12 @@ function Chip<T extends string>({ label, value, current, onChange }: {
     <button
       type="button"
       onClick={() => onChange(value)}
-      style={{
-        padding: "8px 16px",
-        borderRadius: 8,
-        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-        background: active ? "rgba(200,255,0,0.12)" : "var(--surface2)",
-        color: active ? "var(--accent)" : "var(--muted)",
-        fontSize: 14,
-        fontWeight: 500,
-        cursor: "pointer",
-        transition: "all 0.15s",
-        fontFamily: "DM Sans, sans-serif",
-      }}
+      className={cn(
+        "rounded-lg border px-4 py-2 font-body text-[14px] font-medium cursor-pointer transition-all duration-150",
+        active
+          ? "border-accent bg-[rgba(200,255,0,0.12)] text-accent"
+          : "border-border bg-surface2 text-muted"
+      )}
     >
       {label}
     </button>
@@ -60,16 +55,8 @@ function Chip<T extends string>({ label, value, current, onChange }: {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div style={{ marginBottom: 20 }}>
-      <label style={{
-        display: "block",
-        fontSize: 12,
-        fontWeight: 600,
-        color: "var(--muted)",
-        textTransform: "uppercase",
-        letterSpacing: "0.8px",
-        marginBottom: 8,
-      }}>
+    <div className="mb-5">
+      <label className="block text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-2">
         {label}
       </label>
       {children}
@@ -79,14 +66,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
-    <div style={{
-      background: "var(--surface)",
-      border: "1px solid var(--border)",
-      borderRadius: "var(--radius)",
-      padding: 24,
-      marginBottom: 16,
-      ...style,
-    }}>
+    <div className="bg-surface border border-border rounded-xl p-6 mb-4" style={style}>
       {children}
     </div>
   );
@@ -94,52 +74,31 @@ function Card({ children, style }: { children: ReactNode; style?: CSSProperties 
 
 function CardTitle({ children }: { children: ReactNode }) {
   return (
-    <div style={{
-      fontFamily: "Barlow Condensed, sans-serif",
-      fontSize: 16,
-      fontWeight: 700,
-      textTransform: "uppercase",
-      letterSpacing: "0.5px",
-      color: "var(--muted)",
-      marginBottom: 18,
-    }}>
+    <div className="font-display text-[16px] font-bold uppercase tracking-[0.5px] text-muted mb-[18px]">
       {children}
     </div>
   );
 }
 
-const MAX_W = 740;
-
 function Layout({ view, reset, children }: { view: View; reset: () => void; children: ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 60px" }}>
+    <div className="min-h-screen flex flex-col items-center px-4 pb-[60px]">
       {/* Top bar */}
-      <div style={{
-        width: "100%", maxWidth: MAX_W,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "20px 0 16px",
-        borderBottom: "1px solid var(--border)",
-        marginBottom: 36,
-      }}>
-        <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 28, fontWeight: 900, letterSpacing: -0.5 }}>
-          PE<span style={{ color: "var(--accent)" }}>.</span>AI
+      <div className="w-full max-w-[740px] flex items-center justify-between pt-5 pb-4 border-b border-border mb-9">
+        <div className="font-display text-[28px] font-black tracking-[-0.5px]">
+          PE<span className="text-accent">.</span>AI
         </div>
         {view !== "landing" && (
           <button
             onClick={reset}
-            className="no-print"
-            style={{
-              background: "var(--surface2)", border: "1px solid var(--border)",
-              color: "var(--muted)", padding: "8px 16px", borderRadius: 8,
-              cursor: "pointer", fontSize: 14, fontFamily: "DM Sans, sans-serif",
-            }}
+            className="no-print bg-surface2 border border-border text-muted px-4 py-2 rounded-lg cursor-pointer text-[14px] font-body"
           >
             ← Back
           </button>
         )}
       </div>
 
-      <div style={{ width: "100%", maxWidth: MAX_W }}>
+      <div className="w-full max-w-[740px]">
         {children}
       </div>
     </div>
@@ -157,23 +116,8 @@ function BtnPrimary({ children, onClick, disabled, style }: {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      style={{
-        background: "var(--accent)",
-        color: "#0a0a0f",
-        border: "none",
-        borderRadius: 8,
-        padding: "14px 28px",
-        fontFamily: "Barlow Condensed, sans-serif",
-        fontSize: 20,
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.45 : 1,
-        width: "100%",
-        transition: "opacity 0.2s, transform 0.2s",
-        ...style,
-      }}
+      className="w-full bg-accent text-bg border-0 rounded-lg px-7 py-3.5 font-display text-[20px] font-bold uppercase tracking-[0.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 transition-[opacity,transform] duration-200"
+      style={style}
     >
       {children}
     </button>
@@ -191,21 +135,8 @@ function BtnSecondary({ children, onClick, disabled, style }: {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      style={{
-        background: "var(--surface2)",
-        color: "var(--text)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        padding: "12px 24px",
-        fontFamily: "DM Sans, sans-serif",
-        fontSize: 15,
-        fontWeight: 500,
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.45 : 1,
-        width: "100%",
-        transition: "all 0.2s",
-        ...style,
-      }}
+      className="w-full bg-surface2 text-text border border-border rounded-lg px-6 py-3 font-body text-[15px] font-medium cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 transition-all duration-200"
+      style={style}
     >
       {children}
     </button>
@@ -231,18 +162,11 @@ function TextInput({ value, onChange, placeholder, style, maxLength, className }
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       maxLength={maxLength}
-      style={{
-        width: "100%",
-        background: "var(--surface2)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        color: "var(--text)",
-        fontFamily: "DM Sans, sans-serif",
-        fontSize: 15,
-        padding: "12px 14px",
-        outline: "none",
-        ...style,
-      }}
+      className={cn(
+        "w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none",
+        className
+      )}
+      style={style}
     />
   );
 }
@@ -257,39 +181,18 @@ function Textarea({ value, onChange, placeholder }: {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      style={{
-        width: "100%",
-        background: "var(--surface2)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        color: "var(--text)",
-        fontFamily: "DM Sans, sans-serif",
-        fontSize: 15,
-        padding: "12px 14px",
-        outline: "none",
-        resize: "vertical",
-        minHeight: 80,
-      }}
+      className="w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none resize-y min-h-[80px]"
     />
   );
 }
 
 function Alert({ type, children }: { type: "error" | "success"; children: ReactNode }) {
-  const colors: Record<"error" | "success", { bg: string; border: string; color: string }> = {
-    error:   { bg: "rgba(255,77,109,0.08)", border: "rgba(255,77,109,0.3)", color: "var(--danger)" },
-    success: { bg: "rgba(200,255,0,0.08)",  border: "rgba(200,255,0,0.25)", color: "var(--accent)" },
+  const styles: Record<"error" | "success", string> = {
+    error:   "bg-[rgba(255,77,109,0.08)] border-[rgba(255,77,109,0.3)] text-danger",
+    success: "bg-[rgba(200,255,0,0.08)] border-[rgba(200,255,0,0.25)] text-accent",
   };
-  const c = colors[type];
   return (
-    <div style={{
-      background: c.bg,
-      border: `1px solid ${c.border}`,
-      borderRadius: 8,
-      padding: "13px 16px",
-      color: c.color,
-      fontSize: 14,
-      marginTop: 12,
-    }}>
+    <div className={cn("rounded-lg border px-4 py-[13px] text-[14px] mt-3", styles[type])}>
       {children}
     </div>
   );
@@ -301,24 +204,9 @@ function youtubeSearchUrl(exerciseName: string) {
 
 function Spinner() {
   return (
-    <div style={{ textAlign: "center", padding: "60px 20px" }}>
-      <div style={{
-        width: 48, height: 48,
-        border: "3px solid var(--border)",
-        borderTopColor: "var(--accent)",
-        borderRadius: "50%",
-        animation: "pe-spin 0.8s linear infinite",
-        margin: "0 auto 20px",
-      }} />
-      <style>{`@keyframes pe-spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{
-        fontFamily: "Barlow Condensed, sans-serif",
-        fontSize: 22,
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: 1,
-        color: "var(--muted)",
-      }}>
+    <div className="text-center px-5 py-[60px]">
+      <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-5 animate-[pe-spin_0.8s_linear_infinite]" />
+      <div className="font-display text-[22px] font-bold uppercase tracking-[1px] text-muted">
         Building your workout…
       </div>
     </div>
@@ -335,7 +223,7 @@ export default function PEApp() {
 
   // Teacher state
   const [classCode,      setClassCode]      = useState("");
-  const [config,         setConfig]         = useState(DEFAULT_CONFIG);
+  const [config,         setConfig]         = useState<ClassConfig>(DEFAULT_CONFIG);
   const [loadCodeInput,  setLoadCodeInput]  = useState("");
   const [saveMsg,        setSaveMsg]        = useState("");
   const [copied,         setCopied]         = useState(false);
@@ -446,35 +334,20 @@ export default function PEApp() {
   // ── LANDING ──────────────────────────────────────────────────
   if (view === "landing") return (
     <Layout view={view} reset={reset}>
-      <div style={{ textAlign: "center", paddingTop: 16 }}>
-        <div style={{
-          display: "inline-block",
-          background: "rgba(200,255,0,0.12)",
-          color: "var(--accent)",
-          fontSize: 11, fontWeight: 600, letterSpacing: 2,
-          textTransform: "uppercase",
-          padding: "6px 14px", borderRadius: 100,
-          border: "1px solid rgba(200,255,0,0.25)",
-          marginBottom: 20,
-        }}>
+      <div className="text-center pt-4">
+        <div className="inline-block bg-[rgba(200,255,0,0.12)] text-accent text-[11px] font-semibold tracking-[2px] uppercase px-3.5 py-1.5 rounded-full border border-[rgba(200,255,0,0.25)] mb-5">
           ⚡ AI-Powered PE Workouts
         </div>
 
-        <h1 style={{
-          fontFamily: "Barlow Condensed, sans-serif",
-          fontSize: "clamp(52px, 12vw, 88px)",
-          fontWeight: 900, lineHeight: 0.92,
-          textTransform: "uppercase", letterSpacing: -2,
-          marginBottom: 20,
-        }}>
-          Your PE Class<br /><span style={{ color: "var(--accent)" }}>Just Got Smarter</span>
+        <h1 className="font-display text-[clamp(52px,12vw,88px)] font-black leading-[0.92] uppercase tracking-[-2px] mb-5">
+          Your PE Class<br /><span className="text-accent">Just Got Smarter</span>
         </h1>
 
-        <p style={{ color: "var(--muted)", fontSize: 17, lineHeight: 1.6, marginBottom: 48, maxWidth: 460, margin: "0 auto 48px" }}>
+        <p className="text-muted text-[17px] leading-[1.6] mb-12 max-w-[460px] mx-auto">
           Teachers set the parameters. Students get personalized AI-generated workouts. Fast, safe, and built for the gym floor.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className="grid grid-cols-2 gap-4">
           {[
             { icon: "🏫", label: "I'm a Teacher", desc: "Create a class, set workout parameters, and share a code with your students.", action: () => { setView("teacher"); createNewClass(); } },
             { icon: "🏃", label: "I'm a Student", desc: "Enter your class code and get an AI-generated workout tailored to you.",         action: () => setView("student") },
@@ -482,21 +355,11 @@ export default function PEApp() {
             <div
               key={label}
               onClick={action}
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                padding: "32px 24px",
-                cursor: "pointer",
-                textAlign: "left",
-                transition: "border-color 0.2s, transform 0.2s",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.transform = "none"; }}
+              className="bg-surface border border-border rounded-xl px-6 py-8 cursor-pointer text-left transition-[border-color,transform] duration-200 hover:border-accent hover:-translate-y-0.5"
             >
-              <div style={{ fontSize: 36, marginBottom: 12 }}>{icon}</div>
-              <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 26, fontWeight: 700, textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
-              <div style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.5 }}>{desc}</div>
+              <div className="text-[36px] mb-3">{icon}</div>
+              <div className="font-display text-[26px] font-bold uppercase mb-1.5">{label}</div>
+              <div className="text-muted text-[14px] leading-[1.5]">{desc}</div>
             </div>
           ))}
         </div>
@@ -507,17 +370,17 @@ export default function PEApp() {
   // ── TEACHER ───────────────────────────────────────────────────
   if (view === "teacher") return (
     <Layout view={view} reset={reset}>
-      <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 42, fontWeight: 900, textTransform: "uppercase", letterSpacing: -1, marginBottom: 4 }}>
+      <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
         Teacher Dashboard
       </div>
-      <div style={{ color: "var(--muted)", fontSize: 15, marginBottom: 32 }}>
+      <div className="text-muted text-[15px] mb-8">
         Configure your class and share the code with students.
       </div>
 
       {/* Load existing */}
       <Card>
         <CardTitle>Load Existing Class</CardTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "flex-end" }}>
+        <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
           <Field label="Class Code">
             <TextInput
               value={loadCodeInput}
@@ -535,10 +398,10 @@ export default function PEApp() {
       </Card>
 
       {/* Divider */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "8px 0 16px", color: "var(--muted)", fontSize: 13 }}>
-        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+      <div className="flex items-center gap-3 mt-2 mb-4 text-muted text-[13px]">
+        <div className="flex-1 h-px bg-border" />
         or create new
-        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        <div className="flex-1 h-px bg-border" />
       </div>
 
       <BtnSecondary onClick={createNewClass} style={{ marginBottom: 20 }}>
@@ -548,23 +411,14 @@ export default function PEApp() {
       {/* Code display */}
       {classCode && (
         <>
-          <div style={{
-            background: "var(--surface2)",
-            border: "1.5px solid var(--accent)",
-            borderRadius: "var(--radius)",
-            padding: 28, textAlign: "center", marginBottom: 16,
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--muted)", marginBottom: 8 }}>Your Class Code</div>
-            <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 56, fontWeight: 900, color: "var(--accent)", letterSpacing: 8, lineHeight: 1, marginBottom: 14 }}>
+          <div className="bg-surface2 border-[1.5px] border-accent rounded-xl p-7 text-center mb-4">
+            <div className="text-[11px] font-semibold tracking-[2px] uppercase text-muted mb-2">Your Class Code</div>
+            <div className="font-display text-[56px] font-black text-accent tracking-[8px] leading-none mb-3.5">
               {classCode}
             </div>
             <button
               onClick={copyCode}
-              style={{
-                background: "rgba(200,255,0,0.1)", border: "1px solid rgba(200,255,0,0.3)",
-                color: "var(--accent)", padding: "8px 20px", borderRadius: 6,
-                cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "DM Sans, sans-serif",
-              }}
+              className="bg-[rgba(200,255,0,0.1)] border border-[rgba(200,255,0,0.3)] text-accent px-5 py-2 rounded-md cursor-pointer text-[13px] font-semibold font-body"
             >
               {copied ? "✓ Copied!" : "Copy Code"}
             </button>
@@ -576,19 +430,19 @@ export default function PEApp() {
             <Field label={`Duration — ${config.duration} min`}>
               <input type="range" min="10" max="90" step="5" value={config.duration}
                 onChange={e => cfgSet("duration", +e.target.value)}
-                style={{ width: "100%", accentColor: "var(--accent)" }}
+                className="w-full accent-accent"
               />
             </Field>
 
             <Field label={`Min Calories to Burn — ${config.minCalories} kcal`}>
               <input type="range" min="50" max="600" step="25" value={config.minCalories}
                 onChange={e => cfgSet("minCalories", +e.target.value)}
-                style={{ width: "100%", accentColor: "var(--accent)" }}
+                className="w-full accent-accent"
               />
             </Field>
 
             <Field label="Intensity">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div className="flex flex-wrap gap-2">
                 {([["Low","low"],["Moderate","moderate"],["High","high"]] as const).map(([l,v]) =>
                   <Chip key={v} label={l} value={v} current={config.intensity} onChange={val => cfgSet("intensity", val)} />
                 )}
@@ -596,7 +450,7 @@ export default function PEApp() {
             </Field>
 
             <Field label="Workout Focus">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div className="flex flex-wrap gap-2">
                 {([["Mixed","mixed"],["Cardio","cardio"],["Strength","strength"],["Flexibility","flexibility"]] as const).map(([l,v]) =>
                   <Chip key={v} label={l} value={v} current={config.focus} onChange={val => cfgSet("focus", val)} />
                 )}
@@ -604,7 +458,7 @@ export default function PEApp() {
             </Field>
 
             <Field label="Equipment Available">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div className="flex flex-wrap gap-2">
                 {([["No Equipment","none"],["Basic Gear","basic"],["Full Gym","gym"]] as const).map(([l,v]) =>
                   <Chip key={v} label={l} value={v} current={config.equipment} onChange={val => cfgSet("equipment", val)} />
                 )}
@@ -617,7 +471,7 @@ export default function PEApp() {
                 onChange={v => cfgSet("customPrompt", v.slice(0, 500))}
                 placeholder="e.g. Focus on teamwork exercises, avoid jumping movements, theme this week around the Olympics…"
               />
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, textAlign: "right" }}>
+              <div className="text-[12px] text-muted mt-1 text-right">
                 {config.customPrompt.length}/500
               </div>
             </Field>
@@ -637,10 +491,10 @@ export default function PEApp() {
   // ── STUDENT: enter code ───────────────────────────────────────
   if (view === "student") return (
     <Layout view={view} reset={reset}>
-      <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 42, fontWeight: 900, textTransform: "uppercase", letterSpacing: -1, marginBottom: 4 }}>
+      <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
         Join Your Class
       </div>
-      <div style={{ color: "var(--muted)", fontSize: 15, marginBottom: 32 }}>
+      <div className="text-muted text-[15px] mb-8">
         Enter the code your teacher shared with you.
       </div>
 
@@ -668,11 +522,11 @@ export default function PEApp() {
     <Layout view={view} reset={reset}>
       {loading ? <Spinner /> : (
         <>
-          <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 42, fontWeight: 900, textTransform: "uppercase", letterSpacing: -1, marginBottom: 4 }}>
+          <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
             Let's Build Your Workout
           </div>
-          <div style={{ color: "var(--muted)", fontSize: 15, marginBottom: 32 }}>
-            Class <strong style={{ color: "var(--accent)" }}>{studentCode.toUpperCase()}</strong> · {config.duration} min · {config.minCalories}+ kcal · {config.intensity} intensity
+          <div className="text-muted text-[15px] mb-8">
+            Class <strong className="text-accent">{studentCode.toUpperCase()}</strong> · {config.duration} min · {config.minCalories}+ kcal · {config.intensity} intensity
           </div>
 
           <Card>
@@ -681,7 +535,7 @@ export default function PEApp() {
             </Field>
 
             <Field label="How fit do you feel today?">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div className="flex flex-wrap gap-2">
                 {([["Just Starting Out","beginner"],["Feeling Good","moderate"],["Let's Go Hard","advanced"]] as const).map(([l,v]) =>
                   <Chip key={v} label={l} value={v} current={fitnessLevel} onChange={setFitnessLevel} />
                 )}
@@ -710,28 +564,22 @@ export default function PEApp() {
   if (view === "workout" && workout) return (
     <Layout view={view} reset={reset}>
       {/* Hero */}
-      <div className="print-card" style={{
-        background: "linear-gradient(135deg, var(--surface) 0%, #1a1a2e 100%)",
-        border: "1px solid var(--border)",
-        borderTop: "3px solid var(--accent)",
-        borderRadius: "var(--radius)",
-        padding: 28, marginBottom: 16,
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", color: "var(--accent)", marginBottom: 6 }}>
+      <div className="print-card bg-[linear-gradient(135deg,#13131c_0%,#1a1a2e_100%)] border border-border border-t-[3px] border-t-accent rounded-xl p-7 mb-4">
+        <div className="text-[11px] font-semibold tracking-[2px] uppercase text-accent mb-1.5">
           {studentName ? `${studentName}'s Workout` : "Your Workout"}
         </div>
-        <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 40, fontWeight: 900, textTransform: "uppercase", lineHeight: 1, marginBottom: 18 }}>
+        <div className="font-display text-[40px] font-black uppercase leading-none mb-[18px]">
           {workout.title}
         </div>
-        <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
+        <div className="flex gap-7 flex-wrap">
           {[
             [workout.totalCalories, "Calories"],
             [`${workout.totalDuration}m`, "Duration"],
             [workout.exercises?.length ?? 0, "Exercises"],
           ].map(([num, lbl]) => (
             <div key={lbl}>
-              <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 34, fontWeight: 700, color: "var(--accent2)", lineHeight: 1 }}>{num}</div>
-              <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.8px", marginTop: 2 }}>{lbl}</div>
+              <div className="font-display text-[34px] font-bold text-accent2 leading-none">{num}</div>
+              <div className="text-[11px] text-muted uppercase tracking-[0.8px] mt-0.5">{lbl}</div>
             </div>
           ))}
         </div>
@@ -740,16 +588,16 @@ export default function PEApp() {
       {/* Warm-up */}
       {workout.warmup?.length > 0 && (
         <Card>
-          <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "var(--muted)", paddingBottom: 10, borderBottom: "1px solid var(--border)", marginBottom: 12 }}>
+          <div className="font-display text-[13px] font-bold uppercase tracking-[2px] text-muted pb-2.5 border-b border-border mb-3">
             🔥 Warm-Up
           </div>
           {workout.warmup.map((w, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "11px 0", borderBottom: i < workout.warmup.length - 1 ? "1px solid var(--border)" : "none" }}>
+            <div key={i} className={cn("flex justify-between py-[11px]", i < workout.warmup.length - 1 ? "border-b border-border" : "")}>
               <div>
-                <div style={{ fontWeight: 500, fontSize: 15 }}>{w.name}</div>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>{w.description}</div>
+                <div className="font-medium text-[15px]">{w.name}</div>
+                <div className="text-[13px] text-muted mt-0.5">{w.description}</div>
               </div>
-              <div style={{ fontSize: 14, color: "var(--muted)", flexShrink: 0, marginLeft: 12 }}>{w.duration}</div>
+              <div className="text-[14px] text-muted shrink-0 ml-3">{w.duration}</div>
             </div>
           ))}
         </Card>
@@ -757,7 +605,7 @@ export default function PEApp() {
 
       {/* Main exercises */}
       <Card>
-        <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "var(--muted)", paddingBottom: 10, borderBottom: "1px solid var(--border)", marginBottom: 12 }}>
+        <div className="font-display text-[13px] font-bold uppercase tracking-[2px] text-muted pb-2.5 border-b border-border mb-3">
           💪 Main Workout
         </div>
         {workout.exercises?.map((ex, i) => {
@@ -766,47 +614,37 @@ export default function PEApp() {
             <div
               key={i}
               onClick={() => setExpandedExercise(prev => (prev === i ? null : i))}
-              style={{
-                background: "var(--surface2)", border: "1px solid var(--border)",
-                borderRadius: 10, padding: 16, marginBottom: 10,
-                cursor: "pointer",
-                display: "flex", flexDirection: "column", gap: 12,
-                transition: "box-shadow 0.2s",
-                boxShadow: isExpanded ? "0 9px 18px rgba(0,0,0,0.08)" : "none",
-              }}
+              className={cn(
+                "bg-surface2 border border-border rounded-[10px] p-4 mb-2.5 cursor-pointer flex flex-col gap-3 transition-shadow duration-200",
+                isExpanded ? "shadow-[0_9px_18px_rgba(0,0,0,0.08)]" : "shadow-none"
+              )}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>{ex.name}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.4 }}>{ex.tip}</div>
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <div className="font-semibold text-[16px] mb-1">{ex.name}</div>
+                  <div className="text-muted text-[13px] leading-[1.4]">{ex.tip}</div>
                 </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 16, fontWeight: 700, color: "var(--accent)", whiteSpace: "nowrap" }}>
+                <div className="text-right shrink-0">
+                  <div className="font-display text-[16px] font-bold text-accent whitespace-nowrap">
                     {ex.sets} × {ex.reps}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Rest {ex.rest}</div>
-                  <div style={{ fontSize: 12, color: "var(--accent2)", marginTop: 2 }}>{ex.calories} kcal</div>
+                  <div className="text-[12px] text-muted mt-0.5">Rest {ex.rest}</div>
+                  <div className="text-[12px] text-accent2 mt-0.5">{ex.calories} kcal</div>
                 </div>
-                <div style={{ color: "var(--muted)", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.25s" }}>
+                <div className={cn("text-muted transition-transform duration-[250ms]", isExpanded ? "rotate-180" : "rotate-0")}>
                   ▾
                 </div>
               </div>
 
-              <div style={{
-                maxHeight: isExpanded ? 240 : 0,
-                overflow: "hidden",
-                transition: "max-height 0.25s ease",
-                borderTop: `1px solid var(--border)`,
-                paddingTop: isExpanded ? 12 : 0,
-              }}>
+              <div className={cn("overflow-hidden transition-[max-height] duration-[250ms] border-t border-border", isExpanded ? "max-h-[240px] pt-3" : "max-h-0 pt-0")}>
                 {isExpanded && ex.howTo && ex.howTo.length > 0 && (
                   <>
-                    <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: "var(--muted)", marginBottom: 8 }}>
+                    <div className="text-[12px] font-bold tracking-[1px] text-muted mb-2">
                       HOW TO DO IT
                     </div>
-                    <ol style={{ margin: 0, paddingLeft: 20, marginBottom: 8 }}>
+                    <ol className="pl-5 mb-2 list-decimal">
                       {ex.howTo.map((step, idx) => (
-                        <li key={idx} style={{ fontSize: 13, marginBottom: 4 }}>{step}</li>
+                        <li key={idx} className="text-[13px] mb-1">{step}</li>
                       ))}
                     </ol>
                   </>
@@ -817,7 +655,7 @@ export default function PEApp() {
                     href={youtubeSearchUrl(ex.name)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ fontSize: 12, color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}
+                    className="text-[12px] text-accent font-bold no-underline"
                     onClick={e => e.stopPropagation()}
                   >
                     Watch on YouTube ↗
@@ -832,16 +670,16 @@ export default function PEApp() {
       {/* Cool-down */}
       {workout.cooldown?.length > 0 && (
         <Card>
-          <div style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, color: "var(--muted)", paddingBottom: 10, borderBottom: "1px solid var(--border)", marginBottom: 12 }}>
+          <div className="font-display text-[13px] font-bold uppercase tracking-[2px] text-muted pb-2.5 border-b border-border mb-3">
             🧘 Cool-Down
           </div>
           {workout.cooldown.map((w, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "11px 0", borderBottom: i < workout.cooldown.length - 1 ? "1px solid var(--border)" : "none" }}>
+            <div key={i} className={cn("flex justify-between py-[11px]", i < workout.cooldown.length - 1 ? "border-b border-border" : "")}>
               <div>
-                <div style={{ fontWeight: 500, fontSize: 15 }}>{w.name}</div>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>{w.description}</div>
+                <div className="font-medium text-[15px]">{w.name}</div>
+                <div className="text-[13px] text-muted mt-0.5">{w.description}</div>
               </div>
-              <div style={{ fontSize: 14, color: "var(--muted)", flexShrink: 0, marginLeft: 12 }}>{w.duration}</div>
+              <div className="text-[14px] text-muted shrink-0 ml-3">{w.duration}</div>
             </div>
           ))}
         </Card>
@@ -849,18 +687,15 @@ export default function PEApp() {
 
       {/* Coach note */}
       {workout.coachNote && (
-        <div style={{
-          background: "rgba(200,255,0,0.06)", border: "1px solid rgba(200,255,0,0.2)",
-          borderRadius: 10, padding: 18, marginBottom: 16,
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--accent)", marginBottom: 6 }}>
+        <div className="bg-[rgba(200,255,0,0.06)] border border-[rgba(200,255,0,0.2)] rounded-[10px] p-[18px] mb-4">
+          <div className="text-[11px] font-semibold tracking-[1.5px] uppercase text-accent mb-1.5">
             Coach Says
           </div>
-          <div style={{ fontSize: 15, fontStyle: "italic", lineHeight: 1.6 }}>"{workout.coachNote}"</div>
+          <div className="text-[15px] italic leading-[1.6]">"{workout.coachNote}"</div>
         </div>
       )}
 
-      <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 8 }}>
+      <div className="no-print flex gap-2.5 mt-2">
         <BtnSecondary style={{ flex: 1 }} onClick={() => { setWorkout(null); setView("student-form"); }}>
           ↩ Regenerate
         </BtnSecondary>
