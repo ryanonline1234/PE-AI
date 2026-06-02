@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
 
-export async function GET(request) {
+export async function GET(request: Request) {
   // 1. Verify the request comes from our own frontend
   if (!verifySecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -2,18 +2,23 @@
 // The NEXT_PUBLIC_ prefix is needed so Next.js exposes it to the browser bundle.
 // IMPORTANT: this is a *shared* secret between your own frontend and backend —
 // it is NOT the Anthropic key (which stays server-side only).
+import type { ClassConfig, FitnessLevel, Workout } from "@/lib/types";
+
 const SECRET = process.env.NEXT_PUBLIC_INTERNAL_API_SECRET;
 
-function headers() {
+function headers(): Record<string, string> {
   return {
     "Content-Type": "application/json",
-    "x-internal-secret": SECRET,
+    "x-internal-secret": SECRET ?? "",
   };
 }
 
 // ── Class management ──────────────────────────────────────────
 
-export async function apiSaveClass(code, config) {
+export async function apiSaveClass(
+  code: string,
+  config: ClassConfig
+): Promise<{ success: boolean; code: string }> {
   const res = await fetch("/api/save-class", {
     method: "POST",
     headers: headers(),
@@ -24,7 +29,7 @@ export async function apiSaveClass(code, config) {
   return data;
 }
 
-export async function apiGetClass(code) {
+export async function apiGetClass(code: string): Promise<ClassConfig> {
   const res = await fetch(`/api/get-class?code=${encodeURIComponent(code)}`, {
     headers: headers(),
   });
@@ -35,7 +40,17 @@ export async function apiGetClass(code) {
 
 // ── Workout generation ────────────────────────────────────────
 
-export async function apiGenerateWorkout({ code, studentName, fitnessLevel, limitations }) {
+export async function apiGenerateWorkout({
+  code,
+  studentName,
+  fitnessLevel,
+  limitations,
+}: {
+  code: string;
+  studentName: string;
+  fitnessLevel: FitnessLevel;
+  limitations: string;
+}): Promise<Workout> {
   const res = await fetch("/api/generate-workout", {
     method: "POST",
     headers: headers(),

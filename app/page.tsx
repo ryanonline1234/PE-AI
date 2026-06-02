@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { apiSaveClass, apiGetClass, apiGenerateWorkout } from "@/lib/api";
+import type { ClassConfig, FitnessLevel, Workout } from "@/lib/types";
+
+type View = "landing" | "teacher" | "student" | "student-form" | "workout";
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -12,7 +16,7 @@ function genCode() {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG: ClassConfig = {
   duration: 30,
   minCalories: 150,
   equipment: "none",
@@ -25,7 +29,12 @@ const DEFAULT_CONFIG = {
 // Small reusable components
 // ─────────────────────────────────────────────────────────────
 
-function Chip({ label, value, current, onChange }) {
+function Chip<T extends string>({ label, value, current, onChange }: {
+  label: string;
+  value: T;
+  current: T;
+  onChange: (value: T) => void;
+}) {
   const active = current === value;
   return (
     <button
@@ -49,7 +58,7 @@ function Chip({ label, value, current, onChange }) {
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div style={{ marginBottom: 20 }}>
       <label style={{
@@ -68,7 +77,7 @@ function Field({ label, children }) {
   );
 }
 
-function Card({ children, style }) {
+function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
     <div style={{
       background: "var(--surface)",
@@ -83,7 +92,7 @@ function Card({ children, style }) {
   );
 }
 
-function CardTitle({ children }) {
+function CardTitle({ children }: { children: ReactNode }) {
   return (
     <div style={{
       fontFamily: "Barlow Condensed, sans-serif",
@@ -101,7 +110,7 @@ function CardTitle({ children }) {
 
 const MAX_W = 740;
 
-function Layout({ view, reset, children }) {
+function Layout({ view, reset, children }: { view: View; reset: () => void; children: ReactNode }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 60px" }}>
       {/* Top bar */}
@@ -137,7 +146,12 @@ function Layout({ view, reset, children }) {
   );
 }
 
-function BtnPrimary({ children, onClick, disabled, style }) {
+function BtnPrimary({ children, onClick, disabled, style }: {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  style?: CSSProperties;
+}) {
   return (
     <button
       type="button"
@@ -166,7 +180,12 @@ function BtnPrimary({ children, onClick, disabled, style }) {
   );
 }
 
-function BtnSecondary({ children, onClick, disabled, style }) {
+function BtnSecondary({ children, onClick, disabled, style }: {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  style?: CSSProperties;
+}) {
   return (
     <button
       type="button"
@@ -193,7 +212,18 @@ function BtnSecondary({ children, onClick, disabled, style }) {
   );
 }
 
-function TextInput({ value, onChange, placeholder, style, maxLength, className }) {
+function TextInput({ value, onChange, placeholder, style, maxLength, className }: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  style?: CSSProperties;
+  maxLength?: number;
+  className?: string;
+  // NOTE: call sites pass `onBlur` (and `className`), but neither is wired into
+  // the <input> below. Kept as-is to preserve original (no-op) behavior in the
+  // Phase 0 migration — do not "fix" without explicit sign-off. See MEMORY.md.
+  onBlur?: () => void;
+}) {
   return (
     <input
       type="text"
@@ -217,7 +247,11 @@ function TextInput({ value, onChange, placeholder, style, maxLength, className }
   );
 }
 
-function Textarea({ value, onChange, placeholder }) {
+function Textarea({ value, onChange, placeholder }: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
   return (
     <textarea
       value={value}
@@ -240,8 +274,8 @@ function Textarea({ value, onChange, placeholder }) {
   );
 }
 
-function Alert({ type, children }) {
-  const colors = {
+function Alert({ type, children }: { type: "error" | "success"; children: ReactNode }) {
+  const colors: Record<"error" | "success", { bg: string; border: string; color: string }> = {
     error:   { bg: "rgba(255,77,109,0.08)", border: "rgba(255,77,109,0.3)", color: "var(--danger)" },
     success: { bg: "rgba(200,255,0,0.08)",  border: "rgba(200,255,0,0.25)", color: "var(--accent)" },
   };
@@ -261,7 +295,7 @@ function Alert({ type, children }) {
   );
 }
 
-function youtubeSearchUrl(exerciseName) {
+function youtubeSearchUrl(exerciseName: string) {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(exerciseName + " exercise how to")}`;
 }
 
@@ -297,7 +331,7 @@ function Spinner() {
 
 export default function PEApp() {
   // Routing
-  const [view, setView] = useState("landing");
+  const [view, setView] = useState<View>("landing");
 
   // Teacher state
   const [classCode,      setClassCode]      = useState("");
@@ -309,14 +343,14 @@ export default function PEApp() {
   // Student state
   const [studentCode,    setStudentCode]    = useState("");
   const [studentName,    setStudentName]    = useState("");
-  const [fitnessLevel,   setFitnessLevel]   = useState("moderate");
+  const [fitnessLevel,   setFitnessLevel]   = useState<FitnessLevel>("moderate");
   const [limitations,    setLimitations]    = useState("");
-  const [expandedExercise, setExpandedExercise] = useState(null);
+  const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
 
   // Shared
   const [loading,        setLoading]        = useState(false);
   const [error,          setError]          = useState("");
-  const [workout,        setWorkout]        = useState(null);
+  const [workout,        setWorkout]        = useState<Workout | null>(null);
 
   // ── Helpers ──────────────────────────────────────────────
 
@@ -329,7 +363,7 @@ export default function PEApp() {
     setLoadCodeInput("");
   }
 
-  function cfgSet(key, value) {
+  function cfgSet<K extends keyof ClassConfig>(key: K, value: ClassConfig[K]) {
     setConfig((c) => ({ ...c, [key]: value }));
   }
 
@@ -351,7 +385,7 @@ export default function PEApp() {
       setConfig(cfg);
       setSaveMsg("");
     } catch (e) {
-      setError(e.message);
+      setError(e instanceof Error ? e.message : String(e));
     }
     setLoading(false);
   }
@@ -362,7 +396,7 @@ export default function PEApp() {
       await apiSaveClass(classCode, config);
       setSaveMsg("Saved! Share this code with your students.");
     } catch (e) {
-      setError(e.message);
+      setError(e instanceof Error ? e.message : String(e));
     }
     setLoading(false);
   }
@@ -378,7 +412,7 @@ export default function PEApp() {
       setConfig(cfg);
       setView("student-form");
     } catch (e) {
-      setError(e.message);
+      setError(e instanceof Error ? e.message : String(e));
     }
     setLoading(false);
   }
@@ -393,7 +427,7 @@ export default function PEApp() {
       setWorkout(w);
       setView("workout");
     } catch (e) {
-      setError(e.message);
+      setError(e instanceof Error ? e.message : String(e));
     }
     setLoading(false);
   }
@@ -555,7 +589,7 @@ export default function PEApp() {
 
             <Field label="Intensity">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {[["Low","low"],["Moderate","moderate"],["High","high"]].map(([l,v]) =>
+                {([["Low","low"],["Moderate","moderate"],["High","high"]] as const).map(([l,v]) =>
                   <Chip key={v} label={l} value={v} current={config.intensity} onChange={val => cfgSet("intensity", val)} />
                 )}
               </div>
@@ -563,7 +597,7 @@ export default function PEApp() {
 
             <Field label="Workout Focus">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {[["Mixed","mixed"],["Cardio","cardio"],["Strength","strength"],["Flexibility","flexibility"]].map(([l,v]) =>
+                {([["Mixed","mixed"],["Cardio","cardio"],["Strength","strength"],["Flexibility","flexibility"]] as const).map(([l,v]) =>
                   <Chip key={v} label={l} value={v} current={config.focus} onChange={val => cfgSet("focus", val)} />
                 )}
               </div>
@@ -571,7 +605,7 @@ export default function PEApp() {
 
             <Field label="Equipment Available">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {[["No Equipment","none"],["Basic Gear","basic"],["Full Gym","gym"]].map(([l,v]) =>
+                {([["No Equipment","none"],["Basic Gear","basic"],["Full Gym","gym"]] as const).map(([l,v]) =>
                   <Chip key={v} label={l} value={v} current={config.equipment} onChange={val => cfgSet("equipment", val)} />
                 )}
               </div>
@@ -648,7 +682,7 @@ export default function PEApp() {
 
             <Field label="How fit do you feel today?">
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {[["Just Starting Out","beginner"],["Feeling Good","moderate"],["Let's Go Hard","advanced"]].map(([l,v]) =>
+                {([["Just Starting Out","beginner"],["Feeling Good","moderate"],["Let's Go Hard","advanced"]] as const).map(([l,v]) =>
                   <Chip key={v} label={l} value={v} current={fitnessLevel} onChange={setFitnessLevel} />
                 )}
               </div>

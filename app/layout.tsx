@@ -1,12 +1,14 @@
 import "./globals.css";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/react";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "PE.AI — AI-Powered Workouts",
   description: "AI-generated PE workouts configured by teachers, personalized for students.",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>

@@ -2,16 +2,17 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
+import type { ClassConfig, Workout } from "@/lib/types";
 
 const client = new Anthropic(); // automatically reads ANTHROPIC_API_KEY from env
 
-const EQUIPMENT_LABELS = {
+const EQUIPMENT_LABELS: Record<string, string> = {
   none:  "No equipment — bodyweight only",
   basic: "Basic equipment (resistance bands, mats, jump ropes)",
   gym:   "Full gym (free weights, machines, cardio equipment)",
 };
 
-const FOCUS_LABELS = {
+const FOCUS_LABELS: Record<string, string> = {
   mixed:       "Mixed — balanced cardio, strength, and flexibility",
   cardio:      "Cardiovascular endurance",
   strength:    "Muscular strength and endurance",
@@ -19,7 +20,7 @@ const FOCUS_LABELS = {
 };
 
 // Basic prompt-injection guard: strip common injection patterns from student input
-function sanitizeStudentInput(str = "") {
+function sanitizeStudentInput(str: string = ""): string {
   return str
     .slice(0, 300)
     .replace(/ignore (previous|all|prior|above)/gi, "")
@@ -28,7 +29,7 @@ function sanitizeStudentInput(str = "") {
     .trim();
 }
 
-export async function POST(request) {
+export async function POST(request: Request) {
   // 1. Auth check
   if (!verifySecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -60,7 +61,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "Class not found" }, { status: 404 });
   }
 
-  const cfg = data.config;
+  const cfg = data.config as ClassConfig;
 
   // 4. Validate student-supplied fields
   const validLevels = ["beginner", "moderate", "advanced"];
@@ -121,7 +122,7 @@ Injuries or physical limitations: ${notes}
 Please generate my workout.`;
 
   // 6. Call Anthropic API — key never leaves the server
-  let workout;
+  let workout: Workout;
   try {
     const message = await client.messages.create({
       model: "claude-3-haiku-20240307",
@@ -131,8 +132,7 @@ Please generate my workout.`;
     });
 
     const raw = message.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
+      .map((b) => (b.type === "text" ? b.text : ""))
       .join("")
       .trim()
       .replace(/^```json\s*/i, "")
