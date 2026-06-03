@@ -120,18 +120,19 @@ Injuries or physical limitations: ${notes}
 Please generate my workout.`;
 
   // 6. Call DeepSeek (OpenAI-compatible) — key never leaves the server.
-  //    Built here (not at module load), mirroring createServerClient above, so
-  //    the production build's page-data collection doesn't require
-  //    DEEPSEEK_API_KEY at build time — only at request time.
+  //    The client is built inside the try (not at module load): this keeps the
+  //    production build's page-data collection from needing DEEPSEEK_API_KEY at
+  //    build time, AND makes a missing/invalid key degrade to the graceful 500
+  //    below instead of throwing an unhandled (empty-body) 500.
   //    max_tokens is 2048 (up from the old 1024): exercises now carry howTo[]
   //    arrays, and 1024 risked truncating the JSON and breaking the parse.
-  const client = new OpenAI({
-    apiKey: process.env.DEEPSEEK_API_KEY,
-    baseURL: "https://api.deepseek.com",
-  });
-
   let workout: Workout;
   try {
+    const client = new OpenAI({
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      baseURL: "https://api.deepseek.com",
+    });
+
     const completion = await client.chat.completions.create({
       model: "deepseek-v4-flash",
       max_tokens: 2048,
