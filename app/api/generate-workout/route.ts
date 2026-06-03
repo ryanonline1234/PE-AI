@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
 import type { ClassConfig, Workout } from "@/lib/types";
-
-const client = new Anthropic(); // automatically reads ANTHROPIC_API_KEY from env
 
 const EQUIPMENT_LABELS: Record<string, string> = {
   none:  "No equipment — bodyweight only",
@@ -121,26 +119,39 @@ Injuries or physical limitations: ${notes}
 
 Please generate my workout.`;
 
-  // 6. Call Anthropic API — key never leaves the server
+  // 6. Call DeepSeek (OpenAI-compatible) — key never leaves the server.
+  //    Built here (not at module load), mirroring createServerClient above, so
+  //    the production build's page-data collection doesn't require
+  //    DEEPSEEK_API_KEY at build time — only at request time.
+  //    max_tokens is 2048 (up from the old 1024): exercises now carry howTo[]
+  //    arrays, and 1024 risked truncating the JSON and breaking the parse.
+  const client = new OpenAI({
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: "https://api.deepseek.com",
+  });
+
   let workout: Workout;
   try {
-    const message = await client.messages.create({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
+    const completion = await client.chat.completions.create({
+      model: "deepseek-v4-flash",
+      max_tokens: 2048,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
     });
 
-    const raw = message.content
-      .map((b) => (b.type === "text" ? b.text : ""))
-      .join("")
+    // Defensive: DeepSeek's JSON mode should return clean JSON, but keep the
+    // ```json fence-strip + JSON.parse fallback that the prompt's format implies.
+    const raw = (completion.choices[0].message.content ?? "")
       .trim()
       .replace(/^```json\s*/i, "")
       .replace(/```\s*$/, "");
 
     workout = JSON.parse(raw);
   } catch (err) {
-    console.error("Anthropic/parse error:", err);
+    console.error("DeepSeek/parse error:", err);
     return NextResponse.json({ error: "Failed to generate workout. Please try again." }, { status: 500 });
   }
 
