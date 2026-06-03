@@ -7,6 +7,7 @@ out/
 
 # Environment variables
 .env*
+!.env.local.example
 
 # OS files
 .DS_Store
