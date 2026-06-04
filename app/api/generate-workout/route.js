@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
+
+// Haiku 4.5 generation runs ~10-12s; raise the function limit so Vercel doesn't
+// cut it off mid-generation (the default is borderline for this latency).
+export const maxDuration = 60;
 
 const FOCUS_LABELS = {
   mixed:       "Mixed — balanced cardio, strength, and flexibility",
@@ -115,36 +119,30 @@ ${feedback ? `Improvement requests for this regeneration: ${feedback}` : ""}
 
 Please generate my workout.`;
 
-  // 6. Call DeepSeek (OpenAI-compatible) — key never leaves the server.
-  //    Client built inside the try (lazy): a missing/invalid key degrades to the
-  //    graceful 500 below, and module-load stays build-safe without the key.
-  //    max_tokens 2048 (up from 1024): exercises carry howTo[] arrays that risk
-  //    truncating the JSON at 1024 and breaking the parse.
+  // 6. Call Anthropic (Claude Haiku 4.5) — key never leaves the server.
+  //    Client built inside the try (lazy): the build never needs
+  //    ANTHROPIC_API_KEY, and a missing/invalid key degrades to the graceful 500.
   let workout;
   try {
-    const client = new OpenAI({
-      apiKey: process.env.DEEPSEEK_API_KEY,
-      baseURL: "https://api.deepseek.com",
-    });
-
-    const completion = await client.chat.completions.create({
-      model: "deepseek-v4-flash",
+    const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
+    const message = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage },
-      ],
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
     });
 
-    const raw = (completion.choices[0].message.content ?? "")
+    const raw = message.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("")
       .trim()
       .replace(/^```json\s*/i, "")
       .replace(/```\s*$/, "");
 
     workout = JSON.parse(raw);
   } catch (err) {
-    console.error("DeepSeek/parse error:", err);
+    console.error("Anthropic/parse error:", err);
     return NextResponse.json({ error: "Failed to generate workout. Please try again." }, { status: 500 });
   }
 

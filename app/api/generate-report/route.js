@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
+
+// LLM call — raise the function limit so Vercel doesn't time out mid-generation.
+export const maxDuration = 60;
 
 export async function POST(request) {
   if (!verifySecret(request)) {
@@ -73,22 +76,15 @@ Be direct and factual. Do not invent feedback beyond what is provided. Keep the 
 
   let report;
   try {
-    // DeepSeek (OpenAI-compatible). Lazy client (build-safe + graceful on missing key).
-    // NOTE: this route returns a PROSE report, not JSON — so no response_format
-    // json_object and no JSON.parse here (unlike generate-workout).
-    const client = new OpenAI({
-      apiKey: process.env.DEEPSEEK_API_KEY,
-      baseURL: "https://api.deepseek.com",
-    });
-
-    const completion = await client.chat.completions.create({
-      model: "deepseek-v4-flash",
-      max_tokens: 2048,
+    const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
+    const message = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     });
-    report = (completion.choices[0].message.content ?? "").trim();
+    report = message.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
   } catch (err) {
-    console.error("DeepSeek error:", err);
+    console.error("Anthropic error:", err);
     return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
   }
 
