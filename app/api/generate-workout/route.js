@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
-
-const client = new Anthropic(); // automatically reads ANTHROPIC_API_KEY from env
-
 
 const FOCUS_LABELS = {
   mixed:       "Mixed — balanced cardio, strength, and flexibility",
@@ -118,27 +115,36 @@ ${feedback ? `Improvement requests for this regeneration: ${feedback}` : ""}
 
 Please generate my workout.`;
 
-  // 6. Call Anthropic API — key never leaves the server
+  // 6. Call DeepSeek (OpenAI-compatible) — key never leaves the server.
+  //    Client built inside the try (lazy): a missing/invalid key degrades to the
+  //    graceful 500 below, and module-load stays build-safe without the key.
+  //    max_tokens 2048 (up from 1024): exercises carry howTo[] arrays that risk
+  //    truncating the JSON at 1024 and breaking the parse.
   let workout;
   try {
-    const message = await client.messages.create({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
+    const client = new OpenAI({
+      apiKey: process.env.DEEPSEEK_API_KEY,
+      baseURL: "https://api.deepseek.com",
     });
 
-    const raw = message.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("")
+    const completion = await client.chat.completions.create({
+      model: "deepseek-v4-flash",
+      max_tokens: 2048,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
+    });
+
+    const raw = (completion.choices[0].message.content ?? "")
       .trim()
       .replace(/^```json\s*/i, "")
       .replace(/```\s*$/, "");
 
     workout = JSON.parse(raw);
   } catch (err) {
-    console.error("Anthropic/parse error:", err);
+    console.error("DeepSeek/parse error:", err);
     return NextResponse.json({ error: "Failed to generate workout. Please try again." }, { status: 500 });
   }
 

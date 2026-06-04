@@ -7,9 +7,13 @@ out/
 
 # Environment variables
 .env*
+!.env.local.example
 
 # OS files
 .DS_Store
+
+# Local agent tooling / worktrees
+.claude/
 
 # Log files
 npm-debug.log*
