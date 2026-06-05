@@ -1,5 +1,9 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+@import "tailwindcss";
 
+/* ── PE.AI design tokens (single source of truth) ───────────────────────
+   Mapped to Tailwind utilities via @theme (bg-surface, text-accent,
+   border-border, font-display, …) so the brand palette survives the move to
+   Tailwind. Kept as CSS custom properties for shadcn/ui theming in later phases. */
 :root {
   --bg:       #0a0a0f;
   --surface:  #13131c;
@@ -13,17 +17,52 @@
   --radius:   12px;
 }
 
-html, body {
+@theme inline {
+  --color-bg:       var(--bg);
+  --color-surface:  var(--surface);
+  --color-surface2: var(--surface2);
+  --color-border:   var(--border);
+  --color-accent:   var(--accent);
+  --color-accent2:  var(--accent2);
+  --color-text:     var(--text);
+  --color-muted:    var(--muted);
+  --color-danger:   var(--danger);
+
+  --font-display: "Barlow Condensed", sans-serif; /* 700/900, uppercase, tight */
+  --font-body:    "DM Sans", sans-serif;
+
+  --radius: 12px;
+}
+
+/* Base background + body font, matching the original globals.css.
+   line-height: normal restores the UA default the original relied on — Tailwind
+   preflight otherwise sets it to 1.5, which inflates every element lacking an
+   explicit leading and shifts the layout. */
+html,
+body {
   background: var(--bg);
   color: var(--text);
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-body);
+  line-height: normal;
   min-height: 100vh;
 }
 
-/* ── Print styles ─────────────────────────────────── */
+/* Spinner keyframe (previously an inline <style> inside the Spinner). */
+@keyframes pe-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Print styles (unchanged from the original) ─────────────────────────── */
 @media print {
-  body { background: #fff; color: #000; }
-  .no-print { display: none !important; }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .no-print {
+    display: none !important;
+  }
   .print-card {
     border: 1px solid #ccc;
     border-radius: 8px;
