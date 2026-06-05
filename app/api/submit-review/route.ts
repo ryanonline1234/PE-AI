@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
 
-function sanitize(str = "") {
+function sanitize(str: string = ""): string {
   return str
     .slice(0, 500)
     .replace(/ignore (previous|all|prior|above)/gi, "")
@@ -11,7 +11,7 @@ function sanitize(str = "") {
     .trim();
 }
 
-export async function POST(request) {
+export async function POST(request: Request) {
   if (!verifySecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

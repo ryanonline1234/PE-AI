@@ -6,7 +6,7 @@ import { verifySecret } from "@/lib/auth";
 // LLM call — raise the function limit so Vercel doesn't time out mid-generation.
 export const maxDuration = 60;
 
-export async function POST(request) {
+export async function POST(request: Request) {
   if (!verifySecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -74,7 +74,7 @@ Write a concise report for the teacher. Include:
 
 Be direct and factual. Do not invent feedback beyond what is provided. Keep the report under 200 words.`;
 
-  let report;
+  let report: string;
   try {
     const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
     const message = await client.messages.create({
@@ -82,7 +82,7 @@ Be direct and factual. Do not invent feedback beyond what is provided. Keep the 
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     });
-    report = message.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
+    report = message.content.map(b => (b.type === "text" ? b.text : "")).join("").trim();
   } catch (err) {
     console.error("Anthropic error:", err);
     return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });

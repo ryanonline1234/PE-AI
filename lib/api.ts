@@ -2,18 +2,29 @@
 // The NEXT_PUBLIC_ prefix is needed so Next.js exposes it to the browser bundle.
 // IMPORTANT: this is a *shared* secret between your own frontend and backend —
 // it is NOT the Anthropic key (which stays server-side only).
+import type {
+  ClassConfig,
+  GenerateWorkoutInput,
+  ReportResponse,
+  ReviewInput,
+  Workout,
+} from "@/lib/types";
+
 const SECRET = process.env.NEXT_PUBLIC_INTERNAL_API_SECRET;
 
-function headers() {
+function headers(): Record<string, string> {
   return {
     "Content-Type": "application/json",
-    "x-internal-secret": SECRET,
+    "x-internal-secret": SECRET ?? "",
   };
 }
 
 // ── Class management ──────────────────────────────────────────
 
-export async function apiSaveClass(code, config) {
+export async function apiSaveClass(
+  code: string,
+  config: ClassConfig
+): Promise<{ success: boolean; code: string }> {
   const res = await fetch("/api/save-class", {
     method: "POST",
     headers: headers(),
@@ -24,7 +35,7 @@ export async function apiSaveClass(code, config) {
   return data;
 }
 
-export async function apiGetClass(code) {
+export async function apiGetClass(code: string): Promise<ClassConfig> {
   const res = await fetch(`/api/get-class?code=${encodeURIComponent(code)}`, {
     headers: headers(),
   });
@@ -35,7 +46,14 @@ export async function apiGetClass(code) {
 
 // ── Workout generation ────────────────────────────────────────
 
-export async function apiGenerateWorkout({ code, studentName, fitnessLevel, limitations, preferences, regenerateFeedback }) {
+export async function apiGenerateWorkout({
+  code,
+  studentName,
+  fitnessLevel,
+  limitations,
+  preferences,
+  regenerateFeedback,
+}: GenerateWorkoutInput): Promise<Workout> {
   const res = await fetch("/api/generate-workout", {
     method: "POST",
     headers: headers(),
@@ -48,7 +66,12 @@ export async function apiGenerateWorkout({ code, studentName, fitnessLevel, limi
 
 // ── Reviews ───────────────────────────────────────────────────
 
-export async function apiSubmitReview({ code, studentName, rating, comment }) {
+export async function apiSubmitReview({
+  code,
+  studentName,
+  rating,
+  comment,
+}: ReviewInput): Promise<{ ok: boolean }> {
   const res = await fetch("/api/submit-review", {
     method: "POST",
     headers: headers(),
@@ -59,7 +82,7 @@ export async function apiSubmitReview({ code, studentName, rating, comment }) {
   return data;
 }
 
-export async function apiGenerateReport(code) {
+export async function apiGenerateReport(code: string): Promise<ReportResponse> {
   const res = await fetch("/api/generate-report", {
     method: "POST",
     headers: headers(),

@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
+import type { ClassConfig, Workout } from "@/lib/types";
 
 // Haiku 4.5 generation runs ~10-12s; raise the function limit so Vercel doesn't
 // cut it off mid-generation (the default is borderline for this latency).
 export const maxDuration = 60;
 
-const FOCUS_LABELS = {
+const FOCUS_LABELS: Record<string, string> = {
   mixed:       "Mixed — balanced cardio, strength, and flexibility",
   cardio:      "Cardiovascular endurance",
   strength:    "Muscular strength and endurance",
@@ -15,7 +16,7 @@ const FOCUS_LABELS = {
 };
 
 // Basic prompt-injection guard: strip common injection patterns from student input
-function sanitizeStudentInput(str = "") {
+function sanitizeStudentInput(str: string = ""): string {
   return str
     .slice(0, 300)
     .replace(/ignore (previous|all|prior|above)/gi, "")
@@ -24,7 +25,7 @@ function sanitizeStudentInput(str = "") {
     .trim();
 }
 
-export async function POST(request) {
+export async function POST(request: Request) {
   // 1. Auth check
   if (!verifySecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -56,7 +57,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "Class not found" }, { status: 404 });
   }
 
-  const cfg = data.config;
+  const cfg = data.config as ClassConfig;
 
   // 4. Validate student-supplied fields
   const validLevels = ["beginner", "moderate", "advanced"];
@@ -122,7 +123,7 @@ Please generate my workout.`;
   // 6. Call Anthropic (Claude Haiku 4.5) — key never leaves the server.
   //    Client built inside the try (lazy): the build never needs
   //    ANTHROPIC_API_KEY, and a missing/invalid key degrades to the graceful 500.
-  let workout;
+  let workout: Workout;
   try {
     const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
     const message = await client.messages.create({
@@ -133,8 +134,7 @@ Please generate my workout.`;
     });
 
     const raw = message.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
+      .map((b) => (b.type === "text" ? b.text : ""))
       .join("")
       .trim()
       .replace(/^```json\s*/i, "")

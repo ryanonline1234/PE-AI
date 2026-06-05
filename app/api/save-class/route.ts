@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
+import type { ClassConfig } from "@/lib/types";
 
-export async function POST(request) {
+export async function POST(request: Request) {
   // 1. Verify the request comes from our own frontend
   if (!verifySecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,7 +28,7 @@ export async function POST(request) {
   }
 
   // 3. Sanitize config — only allow known keys so teachers can't inject arbitrary data
-  const safeConfig = {
+  const safeConfig: ClassConfig = {
     duration:     Math.min(Math.max(Number(config.duration)    || 30,  10), 120),
     minCalories:  Math.min(Math.max(Number(config.minCalories) || 150, 50), 800),
     intensity:    ["low", "moderate", "high"].includes(config.intensity) ? config.intensity : "moderate",
