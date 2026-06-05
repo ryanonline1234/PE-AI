@@ -33,7 +33,9 @@ export async function POST(request: Request) {
     minCalories:  Math.min(Math.max(Number(config.minCalories) || 150, 50), 800),
     intensity:    ["low", "moderate", "high"].includes(config.intensity) ? config.intensity : "moderate",
     focus:        ["mixed", "cardio", "strength", "flexibility"].includes(config.focus) ? config.focus : "mixed",
-    equipment:    ["none", "basic", "gym"].includes(config.equipment) ? config.equipment : "none",
+    // Free-text (teacher textarea) — truncate like customPrompt; the old
+    // none/basic/gym clamp discarded whatever the teacher typed (stored "none").
+    equipment:    typeof config.equipment === "string" ? config.equipment.slice(0, 500) : "",
     // Truncate free-text to prevent prompt injection via the teacher field
     customPrompt: typeof config.customPrompt === "string"
       ? config.customPrompt.slice(0, 500)

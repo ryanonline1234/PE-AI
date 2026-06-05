@@ -241,6 +241,7 @@ export default function PEApp() {
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [showRegeneratePanel, setShowRegeneratePanel] = useState(false);
   const [regenerateFeedback,  setRegenerateFeedback]  = useState("");
+  const [regenerateHistory,   setRegenerateHistory]   = useState<string[]>([]);
   const [reviewRating,   setReviewRating]   = useState(0);
   const [reviewHover,    setReviewHover]    = useState(0);
   const [reviewComment,  setReviewComment]  = useState("");
@@ -319,6 +320,10 @@ export default function PEApp() {
   }
 
   async function generateWorkout(feedback = "") {
+    // Accumulate regenerate feedback so context from earlier regenerations isn't
+    // lost; a fresh generation (feedback === "") starts a new history.
+    const history = feedback ? [...regenerateHistory, feedback] : [];
+    setRegenerateHistory(history);
     setLoading(true); setError(""); setWorkout(null);
     setShowRegeneratePanel(false); setRegenerateFeedback("");
     setReviewRating(0); setReviewComment(""); setReviewSubmitted(false); setReviewError("");
@@ -326,7 +331,7 @@ export default function PEApp() {
       const w = await apiGenerateWorkout({
         code: studentCode.toUpperCase(),
         studentName, fitnessLevel, limitations, preferences,
-        regenerateFeedback: feedback,
+        regenerateFeedback: history.join("\n"),
       });
       setWorkout(w);
       setView("workout");
@@ -673,6 +678,13 @@ export default function PEApp() {
           {error && <Alert type="error">{error}</Alert>}
         </>
       )}
+    </Layout>
+  );
+
+  // ── WORKOUT: regenerating (loading) — show the spinner, not a blank screen ──
+  if (view === "workout" && loading) return (
+    <Layout view={view} reset={reset}>
+      <Spinner />
     </Layout>
   );
 
