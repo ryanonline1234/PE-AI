@@ -28,8 +28,9 @@
   --color-muted:    var(--muted);
   --color-danger:   var(--danger);
 
-  --font-display: "Barlow Condensed", sans-serif; /* 700/900, uppercase, tight */
-  --font-body:    "DM Sans", sans-serif;
+  /* Font families come from next/font in app/layout.tsx (self-hosted). */
+  --font-display: var(--font-display-src), "Barlow Condensed", sans-serif; /* 700/900, uppercase, tight */
+  --font-body:    var(--font-body-src), "DM Sans", sans-serif;
 
   --radius: 12px;
 }

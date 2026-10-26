@@ -52,6 +52,19 @@ export interface GenerateWorkoutInput {
   regenerateFeedback: string;
 }
 
+export interface ClassLookup {
+  config: ClassConfig;
+  /** True once the class has a teacher key; the teacher UI then asks for it before saving. */
+  hasTeacherKey: boolean;
+}
+
+export interface SaveClassResponse {
+  success: boolean;
+  code: string;
+  /** Present only when this save created the class or claimed a legacy one. Shown once. */
+  teacherKey?: string;
+}
+
 export interface ReviewInput {
   code: string;
   studentName: string;

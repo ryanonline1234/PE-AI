@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
+import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 
 function sanitize(str: string = ""): string {
   return str
@@ -35,9 +36,16 @@ export async function POST(request: Request) {
   }
 
   const supabase = createServerClient();
+
+  const limited = await checkRateLimit(supabase, [
+    { name: `review:code:${code}`,            windowSeconds: WINDOW.hour,       limit: 300 },
+    { name: `review:ip:${clientIp(request)}`, windowSeconds: WINDOW.tenMinutes, limit: 60  },
+  ]);
+  if (limited) return rateLimitedResponse(limited);
+
   const { error: dbError } = await supabase.from("workout_reviews").insert({
     class_code:   code,
-    student_name: sanitize(studentName || ""),
+    student_name: sanitize(studentName || "").slice(0, 50),
     rating:       ratingInt,
     comment:      sanitize(comment || ""),
   });

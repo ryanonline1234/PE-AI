@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
+import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
+import { teacherKeyMatches } from "@/lib/teacher-key";
+import { DEFAULT_TIME_ZONE, formatDateInTimeZone, isValidTimeZone, startOfTodayInTimeZone } from "@/lib/time";
 
 // LLM call — raise the function limit so Vercel doesn't time out mid-generation.
 export const maxDuration = 60;
@@ -18,17 +21,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { code } = body;
+  const { code, teacherKey, timeZone } = body;
 
   if (!code || !/^[A-Z0-9]{6}$/.test(code)) {
     return NextResponse.json({ error: "Invalid class code" }, { status: 400 });
   }
 
-  // Fetch today's reviews for this class (UTC day)
-  const todayStart = new Date();
-  todayStart.setUTCHours(0, 0, 0, 0);
-
   const supabase = createServerClient();
+
+  const limited = await checkRateLimit(supabase, [
+    { name: `report:code:${code}`,            windowSeconds: WINDOW.hour,       limit: 20 },
+    { name: `report:ip:${clientIp(request)}`, windowSeconds: WINDOW.tenMinutes, limit: 20 },
+  ]);
+  if (limited) return rateLimitedResponse(limited);
+
+  // Only the teacher (key holder) can read the class's feedback.
+  const { data: cls, error: clsError } = await supabase
+    .from("pe_classes")
+    .select("teacher_key_hash")
+    .eq("code", code)
+    .maybeSingle();
+
+  if (clsError || !cls) {
+    return NextResponse.json({ error: "Class not found" }, { status: 404 });
+  }
+  if (!cls.teacher_key_hash) {
+    return NextResponse.json(
+      { error: "This class has no teacher key yet. Save the class settings once to get one." },
+      { status: 403 }
+    );
+  }
+  if (!teacherKeyMatches(teacherKey, cls.teacher_key_hash)) {
+    return NextResponse.json({ error: "Wrong teacher key for this class." }, { status: 403 });
+  }
+
+  // "Today" in the school's local day, not the UTC day.
+  const tz = isValidTimeZone(timeZone) ? timeZone : DEFAULT_TIME_ZONE;
+  const todayStart = startOfTodayInTimeZone(tz);
+
   const { data: reviews, error: dbError } = await supabase
     .from("workout_reviews")
     .select("student_name, rating, comment, created_at")
@@ -58,7 +88,7 @@ export async function POST(request: Request) {
   const prompt = `You are a PE teacher assistant summarizing student workout feedback for a teacher.
 
 CLASS CODE: ${code}
-DATE: ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+DATE: ${formatDateInTimeZone(tz)}
 TOTAL RESPONSES: ${reviews.length}
 AVERAGE RATING: ${avgRating} / 5
 RATING BREAKDOWN: ${ratingCounts}
@@ -78,7 +108,7 @@ Be direct and factual. Do not invent feedback beyond what is provided. Keep the 
   try {
     const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
     const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-haiku-4-5",
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     });

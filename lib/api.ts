@@ -4,9 +4,11 @@
 // it is NOT the Anthropic key (which stays server-side only).
 import type {
   ClassConfig,
+  ClassLookup,
   GenerateWorkoutInput,
   ReportResponse,
   ReviewInput,
+  SaveClassResponse,
   Workout,
 } from "@/lib/types";
 
@@ -23,25 +25,26 @@ function headers(): Record<string, string> {
 
 export async function apiSaveClass(
   code: string,
-  config: ClassConfig
-): Promise<{ success: boolean; code: string }> {
+  config: ClassConfig,
+  teacherKey: string
+): Promise<SaveClassResponse> {
   const res = await fetch("/api/save-class", {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ code, config }),
+    body: JSON.stringify({ code, config, teacherKey }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to save class");
   return data;
 }
 
-export async function apiGetClass(code: string): Promise<ClassConfig> {
+export async function apiGetClass(code: string): Promise<ClassLookup> {
   const res = await fetch(`/api/get-class?code=${encodeURIComponent(code)}`, {
     headers: headers(),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Class not found");
-  return data.config;
+  return { config: data.config as ClassConfig, hasTeacherKey: Boolean(data.hasTeacherKey) };
 }
 
 // ── Workout generation ────────────────────────────────────────
@@ -82,11 +85,13 @@ export async function apiSubmitReview({
   return data;
 }
 
-export async function apiGenerateReport(code: string): Promise<ReportResponse> {
+export async function apiGenerateReport(code: string, teacherKey: string): Promise<ReportResponse> {
+  // The report covers "today" in the browser's time zone (the school's), not UTC.
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const res = await fetch("/api/generate-report", {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ code }),
+    body: JSON.stringify({ code, teacherKey, timeZone }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to generate report");

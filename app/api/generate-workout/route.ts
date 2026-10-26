@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
+import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 import type { ClassConfig, Workout } from "@/lib/types";
 
 // Haiku 4.5 generation runs ~10-12s; raise the function limit so Vercel doesn't
@@ -45,8 +46,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid class code" }, { status: 400 });
   }
 
-  // 3. Fetch class config from Supabase (students can't tamper with these values)
   const supabase = createServerClient();
+
+  // 2b. Rate limits. Every generation costs real money, and the x-internal-secret
+  //     gate is only obscurity (it ships in the browser bundle), so this is the
+  //     real cap on abuse. Per-IP stays generous: a whole school shares one NAT IP.
+  const limited = await checkRateLimit(supabase, [
+    { name: `gen:code:${code}`,            windowSeconds: WINDOW.hour,       limit: 150  },
+    { name: `gen:ip:${clientIp(request)}`, windowSeconds: WINDOW.tenMinutes, limit: 100  },
+    { name: "gen:global",                  windowSeconds: WINDOW.day,        limit: 1500 },
+  ]);
+  if (limited) return rateLimitedResponse(limited);
+
+  // 3. Fetch class config from Supabase (students can't tamper with these values)
   const { data, error: dbError } = await supabase
     .from("pe_classes")
     .select("config")
@@ -127,7 +139,7 @@ Please generate my workout.`;
   try {
     const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
     const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-haiku-4-5",
       max_tokens: 2048,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
