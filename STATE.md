@@ -3,13 +3,12 @@
 _Updated 2026-10-26. Overwrite in place at every handoff._
 
 ## Status
-Tier A (revive + harden) is **live in production** at pe-ai.vercel.app
-(`main` @ 1e2b529, merged from PR #2 on 2026-10-26).
+Tier A + Tier B are **live in production** at pe-ai.vercel.app
+(`main` @ acf2a29, PR #3 merged 2026-10-26). Verified on production after the
+deploy: manifest + sw.js served, generation streams progressively (first item
+4 s, done 9 s), `/w/<id>` renders, bad ids 404.
 
-Tier B (gym floor) is **built on branch `gym-floor`**, verified locally,
-awaiting Ryan's phone test on the Vercel preview and his merge. See the PR.
-
-## What Tier B changed (branch `gym-floor`)
+## What Tier B changed
 - **Haiku 5.5, streamed.** `generate-workout` asks for JSON Lines and forwards
   each item as NDJSON; the browser renders progressively. Measured locally:
   first item 2–4 s, complete 8–10 s (was a 12–16 s spinner). Thinking disabled.
@@ -37,11 +36,10 @@ and sw.js served; 404 for bad ids.
 
 ## Not verified yet
 - Real phone: install to home screen, wake lock, vibration/chime, share sheet.
-- Production streaming behaviour on Vercel (Node runtime streams; confirm on
-  the preview, not just locally).
 - Keep-alive cron first run (12:00 UTC 2026-10-27).
+- Test data: class HMJ8TW has several smoke-test workouts and one 4-star review.
 
 ## Next action
-1. Ryan opens the preview on his phone, runs a workout in Go mode, merges.
+1. Ryan tries Go mode on his phone (wake lock, chime, share sheet, install).
 2. Tier C: review history across days, per-day generation counts (the
    `workouts` table now makes this a query), whole-class workout mode.
