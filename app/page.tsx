@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { apiSaveClass, apiGetClass, apiGenerateWorkout, apiSubmitReview, apiGenerateReport } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { recallTeacherKey, rememberTeacherKey } from "@/lib/teacher-key-store";
 import type { ClassConfig, FitnessLevel, ReportMeta, Workout } from "@/lib/types";
 
 type View = "landing" | "teacher" | "student" | "student-form" | "workout";
@@ -226,6 +227,14 @@ export default function PEApp() {
   const [loadCodeInput,  setLoadCodeInput]  = useState("");
   const [saveMsg,        setSaveMsg]        = useState("");
   const [copied,         setCopied]         = useState(false);
+  // Teacher key: the per-class secret that gates saving + reports. Students
+  // never see it. `teacherKey` is the one in use (remembered or just issued);
+  // `teacherKeyInput` is what a teacher types on a new device.
+  const [teacherKey,      setTeacherKey]      = useState("");
+  const [teacherKeyInput, setTeacherKeyInput] = useState("");
+  const [needsTeacherKey, setNeedsTeacherKey] = useState(false);
+  const [issuedKey,       setIssuedKey]       = useState("");
+  const [copiedKey,       setCopiedKey]       = useState(false);
   const [report,         setReport]         = useState<string | null>(null);
   const [reportMeta,     setReportMeta]     = useState<ReportMeta | null>(null);
   const [reportMsg,      setReportMsg]      = useState("");
@@ -263,6 +272,11 @@ export default function PEApp() {
     setStudentCode(""); setStudentName(""); setLimitations("");
     setFitnessLevel("moderate");
     setLoadCodeInput("");
+    clearTeacherKeyState();
+  }
+
+  function clearTeacherKeyState() {
+    setTeacherKey(""); setTeacherKeyInput(""); setNeedsTeacherKey(false); setIssuedKey("");
   }
 
   function cfgSet<K extends keyof ClassConfig>(key: K, value: ClassConfig[K]) {
@@ -275,6 +289,8 @@ export default function PEApp() {
     setClassCode(genCode());
     setConfig(DEFAULT_CONFIG);
     setSaveMsg(""); setError("");
+    setReport(null); setReportMeta(null); setReportMsg("");
+    clearTeacherKeyState();
   }
 
   async function loadClass() {
@@ -282,10 +298,16 @@ export default function PEApp() {
     if (!/^[A-Z0-9]{6}$/.test(code)) { setError("Enter a valid 6-character class code."); return; }
     setLoading(true); setError("");
     try {
-      const cfg = await apiGetClass(code);
+      const { config: cfg, hasTeacherKey } = await apiGetClass(code);
       setClassCode(code);
       setConfig(cfg);
-      setSaveMsg("");
+      setSaveMsg(""); setIssuedKey("");
+      setReport(null); setReportMeta(null); setReportMsg("");
+      // This browser may already know the key for this class.
+      const remembered = recallTeacherKey(code);
+      setTeacherKey(remembered);
+      setTeacherKeyInput("");
+      setNeedsTeacherKey(hasTeacherKey && !remembered);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -295,8 +317,20 @@ export default function PEApp() {
   async function saveClass() {
     setLoading(true); setError(""); setSaveMsg("");
     try {
-      await apiSaveClass(classCode, config);
-      setSaveMsg("Saved! Share this code with your students.");
+      const key = teacherKey || teacherKeyInput;
+      const result = await apiSaveClass(classCode, config, key);
+      if (result.teacherKey) {
+        // First save of this class: the server issued the key. Show it once.
+        setIssuedKey(result.teacherKey);
+        setTeacherKey(result.teacherKey);
+        rememberTeacherKey(classCode, result.teacherKey);
+      } else if (key && key !== teacherKey) {
+        // A typed key was accepted: remember it on this device.
+        setTeacherKey(key);
+        rememberTeacherKey(classCode, key);
+      }
+      setNeedsTeacherKey(false);
+      setSaveMsg("Saved! Share the class code with your students.");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -310,7 +344,7 @@ export default function PEApp() {
     if (!/^[A-Z0-9]{6}$/.test(code)) { setError("Enter a 6-character class code."); return; }
     setLoading(true); setError("");
     try {
-      const cfg = await apiGetClass(code);
+      const { config: cfg } = await apiGetClass(code);
       setConfig(cfg);
       setView("student-form");
     } catch (e) {
@@ -361,7 +395,7 @@ export default function PEApp() {
   async function generateDayReport() {
     setReportLoading(true); setReportError(""); setReport(null); setReportMeta(null); setReportMsg("");
     try {
-      const { report: r, meta, message } = await apiGenerateReport(classCode);
+      const { report: r, meta, message } = await apiGenerateReport(classCode, teacherKey || teacherKeyInput);
       if (!r) { setReportMsg(message || "No reviews yet."); }
       else { setReport(r); setReportMeta(meta ?? null); }
     } catch (e) {
@@ -376,6 +410,16 @@ export default function PEApp() {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  function copyIssuedKey() {
+    navigator.clipboard.writeText(issuedKey);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 1500);
+  }
+
+
+  // A keyed class loaded on a device that doesn't remember its key: block
+  // save/report until the teacher has typed the full 8-character key.
+  const keyMissing = needsTeacherKey && teacherKeyInput.replace(/-/g, "").length < 8;
 
   // ─────────────────────────────────────────────────────────────
   // Views
@@ -465,7 +509,8 @@ export default function PEApp() {
               onBlur={() => setLoadCodeInput(v => v.toUpperCase())}
               placeholder="ABCD12"
               maxLength={6}
-              style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 28, fontWeight: 700, letterSpacing: 6, textAlign: "center" }}
+              className="font-display"
+              style={{ fontSize: 28, fontWeight: 700, letterSpacing: 6, textAlign: "center" }}
             />
           </Field>
           <BtnSecondary onClick={loadClass} disabled={loading} style={{ width: "auto", whiteSpace: "nowrap" }}>
@@ -500,6 +545,47 @@ export default function PEApp() {
               {copied ? "✓ Copied!" : "Copy Code"}
             </button>
           </div>
+
+          {needsTeacherKey && (
+            <Card style={{ borderColor: "var(--accent2)" }}>
+              <CardTitle>Teacher Key Required</CardTitle>
+              <div className="text-muted text-[14px] leading-[1.5] mb-4">
+                This class already has a teacher key. Enter it to change the settings or see reports.
+                Students never need this key — only the class code.
+              </div>
+              <Field label="Teacher Key">
+                <TextInput
+                  value={teacherKeyInput}
+                  onChange={v => setTeacherKeyInput(v.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 9))}
+                  placeholder="ABCD-1234"
+                  maxLength={9}
+                  className="font-display"
+                  style={{ fontSize: 24, fontWeight: 700, letterSpacing: 4, textAlign: "center" }}
+                />
+              </Field>
+            </Card>
+          )}
+
+          {issuedKey && (
+            <div className="bg-surface2 border-[1.5px] border-accent2 rounded-xl p-6 text-center mb-4">
+              <div className="text-[11px] font-semibold tracking-[2px] uppercase text-accent2 mb-2">
+                Your Teacher Key — write this down
+              </div>
+              <div className="font-display text-[40px] font-black text-accent2 tracking-[6px] leading-none mb-3">
+                {issuedKey}
+              </div>
+              <div className="text-muted text-[13px] leading-[1.5] max-w-[420px] mx-auto mb-3.5">
+                You need it to edit this class or see reports from another device. This browser will
+                remember it. Students only need the class code above — never share this key with them.
+              </div>
+              <button
+                onClick={copyIssuedKey}
+                className="bg-[rgba(0,229,255,0.1)] border border-[rgba(0,229,255,0.3)] text-accent2 px-5 py-2 rounded-md cursor-pointer text-[13px] font-semibold font-body"
+              >
+                {copiedKey ? "✓ Copied!" : "Copy Key"}
+              </button>
+            </div>
+          )}
 
           <Card>
             <CardTitle>Workout Parameters</CardTitle>
@@ -554,7 +640,7 @@ export default function PEApp() {
             </Field>
           </Card>
 
-          <BtnPrimary onClick={saveClass} disabled={loading}>
+          <BtnPrimary onClick={saveClass} disabled={loading || keyMissing}>
             {loading ? "Saving…" : "Save Class Settings"}
           </BtnPrimary>
           {saveMsg && <Alert type="success">{saveMsg}</Alert>}
@@ -562,9 +648,9 @@ export default function PEApp() {
           {/* Today's report */}
           <div className="mt-8">
             <div className="font-display text-[22px] font-bold uppercase tracking-[1px] mb-3">
-              Today's Workout Report
+              Today&apos;s Workout Report
             </div>
-            <BtnSecondary onClick={generateDayReport} disabled={reportLoading}>
+            <BtnSecondary onClick={generateDayReport} disabled={reportLoading || keyMissing}>
               {reportLoading ? "Generating…" : "Generate Today's Report"}
             </BtnSecondary>
 
@@ -619,7 +705,8 @@ export default function PEApp() {
             onBlur={() => setStudentCode(v => v.toUpperCase())}
             placeholder="ABCD12"
             maxLength={6}
-            style={{ fontFamily: "Barlow Condensed, sans-serif", fontSize: 36, fontWeight: 700, letterSpacing: 8, textAlign: "center" }}
+            className="font-display"
+            style={{ fontSize: 36, fontWeight: 700, letterSpacing: 8, textAlign: "center" }}
           />
         </Field>
         <BtnPrimary onClick={joinClass} disabled={loading || studentCode.length < 6}>
@@ -636,7 +723,7 @@ export default function PEApp() {
       {loading ? <Spinner /> : (
         <>
           <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
-            Let's Build Your Workout
+            Let&apos;s Build Your Workout
           </div>
           <div className="text-muted text-[15px] mb-8">
             Class <strong className="text-accent">{studentCode.toUpperCase()}</strong> · {config.duration} min · {config.minCalories}+ kcal · {config.intensity} intensity
