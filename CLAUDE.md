@@ -8,7 +8,7 @@ for why things are the way they are.
 ## Stack
 Next.js 16 (App Router, TypeScript, Tailwind v4 via `@theme` in `app/globals.css`),
 Supabase Postgres (service-role from API routes only), Anthropic SDK (Claude
-Haiku), Vercel (git-connected: **push to `main` = production deploy**).
+Haiku 5.5, streamed as JSON Lines), Vercel (git-connected: **push to `main` = production deploy**).
 
 ## Dev loop
 ```bash
@@ -39,4 +39,6 @@ writes to the production database — that's fine for test classes, don't bulk-e
   builds a preview per push.
 - Don't add `next/image`, auth, or student accounts without a decision in `DECISIONS.md`
   (minors' data; the FitTrack merge plan in `~/Archive/peai-unified` is parked).
-- Don't revert to the `claude-haiku-4-5-20251001` dated id or DeepSeek; see DECISIONS.
+- Don't revert to Haiku 4.5 / the dated id / DeepSeek, or to one-document JSON
+  output; see DECISIONS (streaming depends on the JSON Lines format).
+- Don't re-enable thinking on generation without measuring latency; see DECISIONS.

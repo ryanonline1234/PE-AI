@@ -60,3 +60,30 @@ Supabase MCP so the project's migration history matches `supabase/migrations/`.
 ## 2026-10-26 — Model id uses the alias `claude-haiku-4-5`
 Same model as the dated `claude-haiku-4-5-20251001`. Moving to Haiku 5.5 plus
 streaming is a Tier B change, to be measured against the current ~16 s.
+
+## 2026-10-26 — Generation moved to Haiku 5.5, streamed as JSON Lines
+Ryan's call: switch outright, no A/B gate. `claude-haiku-5-5` with
+`thinking: {type: "disabled"}` (it thinks by default; a workout list doesn't
+need it and the student is waiting). The model now emits one JSON object per
+line (meta, warm-ups, exercises, cool-downs) instead of one JSON document, so
+the server can forward each item as it lands (`application/x-ndjson`) and the
+browser renders the warm-up while the main workout is still being written.
+Measured on the dev server against the live API: first item at 2–4 s, done at
+8–10 s, versus a 12–16 s blank spinner before. Rate limits, sanitizing and the
+teacher-controlled prompt are unchanged. Structured outputs were not used:
+they constrain one document, not a sequence.
+
+## 2026-10-26 — Workouts are persisted under a share id
+Table `workouts` (id, class_code, student_name, workout jsonb, created_at),
+written by the generation route once the stream completes. The browser then
+rewrites its URL to `/w/<id>` so refresh, back, and "send to a partner" all
+work; `/w/[id]` is server-rendered from the table. The id is 8 chars from the
+class-code alphabet (~1e12 space), unguessable in practice and never listed.
+Privacy: a row holds a first name (optional, already collected for reviews)
+and the workout text — no account, no device id. Noindex on the share page.
+
+## 2026-10-26 — PWA: manifest + a deliberately small service worker
+`app/manifest.ts` + icons make it installable; `public/sw.js` caches hashed
+assets and keeps the last page copy for offline opens. It does not try to
+make generation work offline (it can't). Serwist/Workbox were considered
+and rejected as weight for a two-rule worker.

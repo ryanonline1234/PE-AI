@@ -3,11 +3,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
 import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
-import type { ClassConfig, Workout } from "@/lib/types";
+import { applyEvent, drainLines, parseModelLine, reconcileTotals } from "@/lib/workout-stream";
+import { newWorkoutId } from "@/lib/workout-id";
+import { EMPTY_WORKOUT, type ClassConfig, type Workout, type WorkoutEvent } from "@/lib/types";
 
-// Haiku 4.5 generation runs ~10-12s; raise the function limit so Vercel doesn't
-// cut it off mid-generation (the default is borderline for this latency).
+// Generation streams for 5-15 s; keep headroom so Vercel never cuts it off.
 export const maxDuration = 60;
+
+const MODEL = "claude-haiku-5-5";
 
 const FOCUS_LABELS: Record<string, string> = {
   mixed:       "Mixed — balanced cardio, strength, and flexibility",
@@ -79,7 +82,9 @@ export async function POST(request: Request) {
   const prefs    = sanitizeStudentInput(preferences       || "");
   const feedback = sanitizeStudentInput(regenerateFeedback || "");
 
-  // 5. Build system prompt from the teacher-controlled config
+  // 5. Build system prompt from the teacher-controlled config.
+  //    Output is one JSON object per line so the browser can render the warm-up
+  //    while the main workout is still being written (see lib/workout-stream.ts).
   const systemPrompt = `You are a certified PE coach AI generating safe, age-appropriate, school-approved workouts for high school students.
 
 CLASS PARAMETERS (set by the teacher — these are fixed and must be respected):
@@ -99,30 +104,16 @@ RULES:
 - Be encouraging and motivating in tone
 
 RESPONSE FORMAT:
-Respond ONLY with a single valid JSON object. No markdown, no backticks, no explanation before or after.
-Use exactly this structure:
-{
-  "title": "Short catchy workout name (3-5 words)",
-  "totalCalories": <integer>,
-  "totalDuration": <integer — minutes>,
-  "warmup": [
-    { "name": "exercise name", "duration": "e.g. 90 sec", "description": "Brief instruction" }
-  ],
-  "exercises": [
-    {
-      "name": "exercise name",
-      "sets": <integer>,
-      "reps": "e.g. 12 reps or 30 sec",
-      "rest": "e.g. 30 sec",
-      "calories": <integer — estimated for this exercise>,
-      "tip": "One-sentence form or safety tip",
-      "howTo": ["Step 1 instruction", "Step 2 instruction", "Step 3 instruction"]
-    }
-  ],
-  "cooldown": [
-    { "name": "stretch or exercise name", "duration": "e.g. 1 min", "description": "Brief instruction" }
-  ]
-}`;
+Respond with JSON Lines: exactly one compact JSON object per line, nothing else. No markdown, no backticks, no blank lines, no text before or after.
+Emit the lines in this order:
+1. One meta line:
+{"type":"meta","title":"Short catchy workout name (3-5 words)","totalCalories":<integer>,"totalDuration":<integer minutes>}
+2. 2-3 warm-up lines:
+{"type":"warmup","name":"exercise name","duration":"e.g. 90 sec","description":"Brief instruction"}
+3. 4-8 exercise lines (durations like "30 sec" are allowed in reps for timed moves):
+{"type":"exercise","name":"exercise name","sets":<integer>,"reps":"e.g. 12 reps or 30 sec","rest":"e.g. 30 sec","calories":<integer estimated for this exercise>,"tip":"One-sentence form or safety tip","howTo":["Step 1","Step 2","Step 3"]}
+4. 2-3 cool-down lines:
+{"type":"cooldown","name":"stretch name","duration":"e.g. 1 min","description":"Brief instruction"}`;
 
   const userMessage = `Student name: ${name || "Anonymous"}
 Fitness level: ${level}
@@ -132,31 +123,83 @@ ${feedback ? `Improvement requests for this regeneration: ${feedback}` : ""}
 
 Please generate my workout.`;
 
-  // 6. Call Anthropic (Claude Haiku 4.5) — key never leaves the server.
-  //    Client built inside the try (lazy): the build never needs
-  //    ANTHROPIC_API_KEY, and a missing/invalid key degrades to the graceful 500.
-  let workout: Workout;
-  try {
-    const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
-    const message = await client.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
-    });
+  // 6. Stream from Claude, forwarding one normalized event per line (NDJSON),
+  //    then save the finished workout and end with its share id. HTTP errors
+  //    before this point are plain JSON; once streaming starts, failures arrive
+  //    as an `error` event so the client can show them.
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (ev: WorkoutEvent) => controller.enqueue(encoder.encode(JSON.stringify(ev) + "\n"));
+      let workout: Workout = EMPTY_WORKOUT;
+      const handleLine = (line: string) => {
+        const ev = parseModelLine(line);
+        if (!ev) return;
+        workout = applyEvent(workout, ev);
+        send(ev);
+      };
 
-    const raw = message.content
-      .map((b) => (b.type === "text" ? b.text : ""))
-      .join("")
-      .trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/```\s*$/, "");
+      try {
+        // Client built lazily: the build never needs ANTHROPIC_API_KEY, and a
+        // missing/invalid key degrades to the graceful error event below.
+        const client = new Anthropic();
+        const run = client.messages.stream({
+          model: MODEL,
+          max_tokens: 4096,
+          // Haiku 5.5 thinks by default; a workout list doesn't need it and the
+          // student is standing on a gym floor waiting. Latency wins.
+          thinking: { type: "disabled" },
+          system: systemPrompt,
+          messages: [{ role: "user", content: userMessage }],
+        });
 
-    workout = JSON.parse(raw);
-  } catch (err) {
-    console.error("Anthropic/parse error:", err);
-    return NextResponse.json({ error: "Failed to generate workout. Please try again." }, { status: 500 });
-  }
+        let buffer = "";
+        for await (const event of run) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            buffer = drainLines(buffer + event.delta.text, handleLine);
+          }
+        }
+        if (buffer.trim()) handleLine(buffer);
 
-  return NextResponse.json({ workout });
+        const final = await run.finalMessage();
+        if (final.stop_reason === "refusal") {
+          send({ kind: "error", message: "The AI declined this request. Try rewording your notes and generate again." });
+          return;
+        }
+        if (workout.exercises.length === 0) {
+          console.error("Generation produced no exercises", { stop_reason: final.stop_reason });
+          send({ kind: "error", message: "Failed to generate workout. Please try again." });
+          return;
+        }
+
+        workout = reconcileTotals(workout);
+        if (!workout.title) workout = { ...workout, title: "Your Workout" };
+
+        const id = newWorkoutId();
+        const { error: insertError } = await supabase
+          .from("workouts")
+          .insert({ id, class_code: code, student_name: name || null, workout });
+        if (insertError) {
+          // The student still has the workout on screen; only the share link is lost.
+          console.error("workouts insert failed:", insertError);
+          send({ kind: "error", message: "Workout ready, but it could not be saved for sharing." });
+          return;
+        }
+        send({ kind: "done", id });
+      } catch (err) {
+        console.error("Anthropic/stream error:", err);
+        send({ kind: "error", message: "Failed to generate workout. Please try again." });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

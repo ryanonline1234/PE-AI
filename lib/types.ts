@@ -83,3 +83,34 @@ export interface ReportResponse {
   meta?: ReportMeta;
   message?: string;
 }
+
+// ── Streaming generation ──────────────────────────────────────
+// The model emits one JSON object per line (meta first, then each item in order);
+// the server normalizes each line into one of these events and streams them to
+// the browser as NDJSON. `done` carries the share id once the workout is saved.
+
+export type WorkoutEvent =
+  | { kind: "meta"; title: string; totalCalories: number; totalDuration: number }
+  | { kind: "warmup"; item: WarmupItem }
+  | { kind: "exercise"; item: ExerciseItem }
+  | { kind: "cooldown"; item: CooldownItem }
+  | { kind: "done"; id: string }
+  | { kind: "error"; message: string };
+
+export const EMPTY_WORKOUT: Workout = {
+  title: "",
+  totalCalories: 0,
+  totalDuration: 0,
+  warmup: [],
+  exercises: [],
+  cooldown: [],
+};
+
+/** A persisted workout as read back from the `workouts` table. */
+export interface SavedWorkout {
+  id: string;
+  code: string;
+  studentName: string;
+  workout: Workout;
+  createdAt: string; // ISO
+}

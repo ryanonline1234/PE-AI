@@ -4,36 +4,44 @@ _Updated 2026-10-26. Overwrite in place at every handoff._
 
 ## Status
 Tier A (revive + harden) is **live in production** at pe-ai.vercel.app
-(`main` @ 1e2b529, merged from PR #2 on 2026-10-26). Verified on production:
-page + self-hosted fonts, API gate, keepalive auth, teacher-key claim + 403,
-generation (12 s). All 16 pre-existing classes are still unclaimed (null key).
+(`main` @ 1e2b529, merged from PR #2 on 2026-10-26).
 
-## What Tier A changed
-- Next 15.2.8 → 16.4.3, React 19.3, Anthropic SDK 1.3, supabase-js 2.118,
-  Tailwind 4.3.3; `next/font` fonts; flat ESLint config. Build, lint, tsc clean.
-- Teacher key gating `save-class` + `generate-report` (`lib/teacher-key.ts`,
-  teacher UI shows it once and remembers it per browser).
-- Postgres rate limiter (`rate_limit_check`) on every route, failing open.
-- Daily report uses the browser's local day (default America/Los_Angeles).
-- `/api/keepalive` + `vercel.json` daily cron; `CRON_SECRET` set on Vercel
-  (production + preview) and in `.env.local`.
-- Supabase: migrations `baseline`, `teacher_key`, `rate_limits` applied to
-  project `btdfzxcrbmcynpnrhzzz` and tracked in `supabase/migrations/`.
-- Vercel: stale `DEEPSEEK_API_KEY` removed; service-role + internal secret
-  switched to sensitive type.
+Tier B (gym floor) is **built on branch `gym-floor`**, verified locally,
+awaiting Ryan's phone test on the Vercel preview and his merge. See the PR.
+
+## What Tier B changed (branch `gym-floor`)
+- **Haiku 5.5, streamed.** `generate-workout` asks for JSON Lines and forwards
+  each item as NDJSON; the browser renders progressively. Measured locally:
+  first item 2–4 s, complete 8–10 s (was a 12–16 s spinner). Thinking disabled.
+- **Persisted workouts + share link.** New table `workouts` (migration
+  `20261027000004_workouts`, applied to `btdfzxcrbmcynpnrhzzz`). After a
+  generation the URL becomes `/w/<id>`; that page is server-rendered from the
+  table and offers Go mode, share, print, review, and "Make my own" back to the
+  class (`/?code=XXXXXX` auto-joins).
+- **Go mode** (`components/GoMode.tsx`, steps built by `lib/go-mode.ts`):
+  full-screen step player, countdowns for timed work and rest, tap-to-finish
+  rep sets, pause, back, chime + vibration, screen wake lock, finish screen
+  that lands on the review card.
+- **PWA**: `app/manifest.ts`, icons in `public/icons/` (rendered from Barlow
+  Condensed by a scratch PIL script), `public/sw.js` (cache hashed assets,
+  network-first pages), registered in production only.
+- **Refactor**: UI primitives moved to `components/ui.tsx`, workout view to
+  `components/WorkoutScreen.tsx`; `app/page.tsx` shrank from 984 to ~640 lines.
+
+## Verified locally (dev server against the live API + DB)
+tsc / lint / build clean; lib assertions for the stream parser and step
+builder; NDJSON stream via curl (progressive); browser at 375px: streaming
+render, URL rewrite, Go mode (timed, reps, rest), reload of `/w/<id>`,
+auto-join from the share page, review submit from the share page; manifest
+and sw.js served; 404 for bad ids.
+
+## Not verified yet
+- Real phone: install to home screen, wake lock, vibration/chime, share sheet.
+- Production streaming behaviour on Vercel (Node runtime streams; confirm on
+  the preview, not just locally).
+- Keep-alive cron first run (12:00 UTC 2026-10-27).
 
 ## Next action
-1. Confirm the keep-alive cron fired (Vercel → pe-ai → Cron Jobs, first run
-   12:00 UTC 2026-10-27) and that `rate_limits` is filling sanely after the
-   teacher's first real class.
-2. Tier B (gym-floor): streaming generation + Haiku 5.5 measurement, persisted
-   workouts with a share link, "Go" mode with timers + wake lock, PWA.
-3. Tier C: review history across days, per-day generation counts, whole-class
-   workout mode.
-
-## Known gaps / not verified
-- Rate-limit thresholds are a first guess; watch `rate_limits` after the first
-  real class (per-IP is the risky one: a school shares one NAT IP).
-- Supabase free-tier pause policy is recalled, not verified; the cron is cheap
-  insurance either way.
-- Vercel Hobby cron runs daily at best-effort timing; fine for keep-alive.
+1. Ryan opens the preview on his phone, runs a workout in Go mode, merges.
+2. Tier C: review history across days, per-day generation counts (the
+   `workouts` table now makes this a query), whole-class workout mode.

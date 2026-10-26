@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
-import { apiSaveClass, apiGetClass, apiGenerateWorkout, apiSubmitReview, apiGenerateReport } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { apiSaveClass, apiGetClass, apiGenerateWorkoutStream, apiGenerateReport } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { recallTeacherKey, rememberTeacherKey } from "@/lib/teacher-key-store";
-import type { ClassConfig, FitnessLevel, ReportMeta, Workout } from "@/lib/types";
+import { applyEvent } from "@/lib/workout-stream";
+import { EMPTY_WORKOUT, type ClassConfig, type FitnessLevel, type ReportMeta, type Workout } from "@/lib/types";
+import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle, Chip, Field, Layout, Spinner, TextInput, Textarea } from "@/components/ui";
+import { WorkoutScreen } from "@/components/WorkoutScreen";
 
 type View = "landing" | "teacher" | "student" | "student-form" | "workout";
 
@@ -26,192 +28,6 @@ const DEFAULT_CONFIG: ClassConfig = {
   focus: "mixed",
   customPrompt: "",
 };
-
-// ─────────────────────────────────────────────────────────────
-// Small reusable components
-// ─────────────────────────────────────────────────────────────
-
-function Chip<T extends string>({ label, value, current, onChange }: {
-  label: string;
-  value: T;
-  current: T;
-  onChange: (value: T) => void;
-}) {
-  const active = current === value;
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(value)}
-      className={cn(
-        "rounded-lg border px-4 py-2 font-body text-[14px] font-medium cursor-pointer transition-all duration-150",
-        active
-          ? "border-accent bg-[rgba(200,255,0,0.12)] text-accent"
-          : "border-border bg-surface2 text-muted"
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="mb-5">
-      <label className="block text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-2">
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function Card({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  return (
-    <div className="bg-surface border border-border rounded-xl p-6 mb-4" style={style}>
-      {children}
-    </div>
-  );
-}
-
-function CardTitle({ children }: { children: ReactNode }) {
-  return (
-    <div className="font-display text-[16px] font-bold uppercase tracking-[0.5px] text-muted mb-[18px]">
-      {children}
-    </div>
-  );
-}
-
-function Layout({ view, reset, children }: { view: View; reset: () => void; children: ReactNode }) {
-  return (
-    <div className="min-h-screen flex flex-col items-center px-4 pb-[60px]">
-      {/* Top bar */}
-      <div className="w-full max-w-[740px] flex items-center justify-between pt-5 pb-4 border-b border-border mb-9">
-        <div className="font-display text-[28px] font-black tracking-[-0.5px]">
-          PE<span className="text-accent">.</span>AI
-        </div>
-        {view !== "landing" && (
-          <button
-            onClick={reset}
-            className="no-print bg-surface2 border border-border text-muted px-4 py-2 rounded-lg cursor-pointer text-[14px] font-body"
-          >
-            ← Back
-          </button>
-        )}
-      </div>
-
-      <div className="w-full max-w-[740px]">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function BtnPrimary({ children, onClick, disabled, style }: {
-  children: ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  style?: CSSProperties;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="w-full bg-accent text-bg border-0 rounded-lg px-7 py-3.5 font-display text-[20px] font-bold uppercase tracking-[0.5px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 transition-[opacity,transform] duration-200"
-      style={style}
-    >
-      {children}
-    </button>
-  );
-}
-
-function BtnSecondary({ children, onClick, disabled, style }: {
-  children: ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  style?: CSSProperties;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="w-full bg-surface2 text-text border border-border rounded-lg px-6 py-3 font-body text-[15px] font-medium cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 transition-all duration-200"
-      style={style}
-    >
-      {children}
-    </button>
-  );
-}
-
-function TextInput({ value, onChange, placeholder, style, maxLength, className }: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  style?: CSSProperties;
-  maxLength?: number;
-  className?: string;
-  // call sites pass onBlur (and className) but the input never wires them —
-  // preserving the original no-op behavior. See MEMORY.md.
-  onBlur?: () => void;
-}) {
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      maxLength={maxLength}
-      className={cn(
-        "w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none",
-        className
-      )}
-      style={style}
-    />
-  );
-}
-
-function Textarea({ value, onChange, placeholder }: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none resize-y min-h-[80px]"
-    />
-  );
-}
-
-function Alert({ type, children }: { type: "error" | "success"; children: ReactNode }) {
-  const styles: Record<"error" | "success", string> = {
-    error:   "bg-[rgba(255,77,109,0.08)] border-[rgba(255,77,109,0.3)] text-danger",
-    success: "bg-[rgba(200,255,0,0.08)] border-[rgba(200,255,0,0.25)] text-accent",
-  };
-  return (
-    <div className={cn("rounded-lg border px-4 py-[13px] text-[14px] mt-3", styles[type])}>
-      {children}
-    </div>
-  );
-}
-
-function youtubeSearchUrl(exerciseName: string) {
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(exerciseName + " exercise how to")}`;
-}
-
-function Spinner() {
-  return (
-    <div className="text-center px-5 py-[60px]">
-      <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-5 animate-[pe-spin_0.8s_linear_infinite]" />
-      <div className="font-display text-[22px] font-bold uppercase tracking-[1px] text-muted">
-        Building your workout…
-      </div>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────
 // Main App
@@ -247,28 +63,44 @@ export default function PEApp() {
   const [fitnessLevel,   setFitnessLevel]   = useState<FitnessLevel>("moderate");
   const [limitations,    setLimitations]    = useState("");
   const [preferences,    setPreferences]    = useState("");
-  const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
-  const [showRegeneratePanel, setShowRegeneratePanel] = useState(false);
-  const [regenerateFeedback,  setRegenerateFeedback]  = useState("");
   const [regenerateHistory,   setRegenerateHistory]   = useState<string[]>([]);
-  const [reviewRating,   setReviewRating]   = useState(0);
-  const [reviewHover,    setReviewHover]    = useState(0);
-  const [reviewComment,  setReviewComment]  = useState("");
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
-  const [reviewLoading,  setReviewLoading]  = useState(false);
-  const [reviewError,    setReviewError]    = useState("");
+  // Streaming generation: the workout fills in event by event; `shareId`
+  // arrives last, once the server has saved it. `generation` remounts the
+  // workout screen (and its review form) per generation.
+  const [streaming,      setStreaming]      = useState(false);
+  const [shareId,        setShareId]        = useState<string | null>(null);
+  const [generation,     setGeneration]     = useState(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Shared
   const [loading,        setLoading]        = useState(false);
   const [error,          setError]          = useState("");
   const [workout,        setWorkout]        = useState<Workout | null>(null);
 
+  // /?code=ABC123 (from a shared workout's "Make my own" or a teacher's link)
+  // drops the student straight into that class.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("code")?.toUpperCase() ?? "";
+    if (/^[A-Z0-9]{6}$/.test(code)) {
+      // Mount-time URL read: the page is server-rendered as the landing view, so
+      // this can't be a lazy initial state without a hydration mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStudentCode(code);
+      setView("student");
+      void joinWithCode(code);
+    }
+  }, []);
+
   // ── Helpers ──────────────────────────────────────────────
 
   function reset() {
+    abortRef.current?.abort();
     setView("landing");
     setError(""); setSaveMsg("");
-    setWorkout(null);
+    setWorkout(null); setShareId(null); setStreaming(false);
+    if (window.location.pathname !== "/" || window.location.search) {
+      window.history.replaceState(null, "", "/");
+    }
     setStudentCode(""); setStudentName(""); setLimitations("");
     setFitnessLevel("moderate");
     setLoadCodeInput("");
@@ -342,6 +174,10 @@ export default function PEApp() {
   async function joinClass() {
     const code = studentCode.toUpperCase().trim();
     if (!/^[A-Z0-9]{6}$/.test(code)) { setError("Enter a 6-character class code."); return; }
+    await joinWithCode(code);
+  }
+
+  async function joinWithCode(code: string) {
     setLoading(true); setError("");
     try {
       const { config: cfg } = await apiGetClass(code);
@@ -358,38 +194,55 @@ export default function PEApp() {
     // lost; a fresh generation (feedback === "") starts a new history.
     const history = feedback ? [...regenerateHistory, feedback] : [];
     setRegenerateHistory(history);
-    setLoading(true); setError(""); setWorkout(null);
-    setShowRegeneratePanel(false); setRegenerateFeedback("");
-    setReviewRating(0); setReviewComment(""); setReviewSubmitted(false); setReviewError("");
-    try {
-      const w = await apiGenerateWorkout({
-        code: studentCode.toUpperCase(),
-        studentName, fitnessLevel, limitations, preferences,
-        regenerateFeedback: history.join("\n"),
-      });
-      setWorkout(w);
-      setView("workout");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-    setLoading(false);
-  }
 
-  async function submitReview() {
-    if (!reviewRating) return;
-    setReviewLoading(true); setReviewError("");
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setError("");
+    setWorkout(EMPTY_WORKOUT);
+    setShareId(null);
+    setStreaming(true);
+    setGeneration((g) => g + 1);
+    setView("workout");
+
+    let latest: Workout = EMPTY_WORKOUT;
+    let failed = "";
     try {
-      await apiSubmitReview({
-        code: studentCode.toUpperCase(),
-        studentName,
-        rating: reviewRating,
-        comment: reviewComment,
-      });
-      setReviewSubmitted(true);
+      await apiGenerateWorkoutStream(
+        {
+          code: studentCode.toUpperCase(),
+          studentName, fitnessLevel, limitations, preferences,
+          regenerateFeedback: history.join("\n"),
+        },
+        (ev) => {
+          if (ev.kind === "done") {
+            setShareId(ev.id);
+            // Make refresh and the back button land on the saved workout.
+            window.history.replaceState(null, "", `/w/${ev.id}`);
+          } else if (ev.kind === "error") {
+            failed = ev.message;
+          } else {
+            latest = applyEvent(latest, ev);
+            setWorkout(latest);
+          }
+        },
+        controller.signal
+      );
     } catch (e) {
-      setReviewError(e instanceof Error ? e.message : String(e));
+      if (controller.signal.aborted) return;
+      failed = e instanceof Error ? e.message : String(e);
     }
-    setReviewLoading(false);
+    if (controller.signal.aborted) return;
+    setStreaming(false);
+    if (failed) {
+      if (latest.exercises.length === 0) {
+        // Nothing usable arrived: back to the form with the message.
+        setWorkout(null);
+        setView("student-form");
+      }
+      setError(failed);
+    }
   }
 
   async function generateDayReport() {
@@ -427,7 +280,7 @@ export default function PEApp() {
 
   // ── LANDING ──────────────────────────────────────────────────
   if (view === "landing") return (
-    <Layout view={view} reset={reset}>
+    <Layout>
       <div className="text-center pt-4">
         <div className="inline-block bg-[rgba(200,255,0,0.12)] text-accent text-[11px] font-semibold tracking-[2px] uppercase px-3.5 py-1.5 rounded-full border border-[rgba(200,255,0,0.25)] mb-5">
           ⚡ AI-Powered PE Workouts
@@ -490,7 +343,7 @@ export default function PEApp() {
 
   // ── TEACHER ───────────────────────────────────────────────────
   if (view === "teacher") return (
-    <Layout view={view} reset={reset}>
+    <Layout onBack={reset}>
       <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
         Teacher Dashboard
       </div>
@@ -689,7 +542,7 @@ export default function PEApp() {
 
   // ── STUDENT: enter code ───────────────────────────────────────
   if (view === "student") return (
-    <Layout view={view} reset={reset}>
+    <Layout onBack={reset}>
       <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
         Join Your Class
       </div>
@@ -719,7 +572,7 @@ export default function PEApp() {
 
   // ── STUDENT: form ─────────────────────────────────────────────
   if (view === "student-form") return (
-    <Layout view={view} reset={reset}>
+    <Layout onBack={reset}>
       {loading ? <Spinner /> : (
         <>
           <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
@@ -768,215 +621,19 @@ export default function PEApp() {
     </Layout>
   );
 
-  // ── WORKOUT: regenerating (loading) — show the spinner, not a blank screen ──
-  if (view === "workout" && loading) return (
-    <Layout view={view} reset={reset}>
-      <Spinner />
-    </Layout>
-  );
-
-  // ── WORKOUT DISPLAY ───────────────────────────────────────────
+  // ── WORKOUT ──────────────────────────────────────────────────
   if (view === "workout" && workout) return (
-    <Layout view={view} reset={reset}>
-      {/* Hero */}
-      <div className="print-card bg-[linear-gradient(135deg,#13131c_0%,#1a1a2e_100%)] border border-border border-t-[3px] border-t-accent rounded-xl p-7 mb-4">
-        <div className="text-[11px] font-semibold tracking-[2px] uppercase text-accent mb-1.5">
-          {studentName ? `${studentName}'s Workout` : "Your Workout"}
-        </div>
-        <div className="font-display text-[40px] font-black uppercase leading-none mb-[18px]">
-          {workout.title}
-        </div>
-        <div className="flex gap-7 flex-wrap">
-          {[
-            [workout.totalCalories, "Calories"],
-            [`${workout.totalDuration}m`, "Duration"],
-            [workout.exercises?.length ?? 0, "Exercises"],
-          ].map(([num, lbl]) => (
-            <div key={lbl}>
-              <div className="font-display text-[34px] font-bold text-accent2 leading-none">{num}</div>
-              <div className="text-[11px] text-muted uppercase tracking-[0.8px] mt-0.5">{lbl}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Warm-up */}
-      {workout.warmup?.length > 0 && (
-        <Card>
-          <div className="font-display text-[13px] font-bold uppercase tracking-[2px] text-muted pb-2.5 border-b border-border mb-3">
-            🔥 Warm-Up
-          </div>
-          {workout.warmup.map((w, i) => (
-            <div key={i} className={cn("flex justify-between py-[11px]", i < workout.warmup.length - 1 ? "border-b border-border" : "")}>
-              <div>
-                <div className="font-medium text-[15px]">{w.name}</div>
-                <div className="text-[13px] text-muted mt-0.5">{w.description}</div>
-              </div>
-              <div className="text-[14px] text-muted shrink-0 ml-3">{w.duration}</div>
-            </div>
-          ))}
-        </Card>
-      )}
-
-      {/* Main exercises */}
-      <Card>
-        <div className="font-display text-[13px] font-bold uppercase tracking-[2px] text-muted pb-2.5 border-b border-border mb-3">
-          💪 Main Workout
-        </div>
-        {workout.exercises?.map((ex, i) => {
-          const isExpanded = expandedExercise === i;
-          return (
-            <div
-              key={i}
-              onClick={() => setExpandedExercise(prev => (prev === i ? null : i))}
-              className={cn(
-                "bg-surface2 border border-border rounded-[10px] p-4 mb-2.5 cursor-pointer flex flex-col gap-3 transition-shadow duration-200",
-                isExpanded ? "shadow-[0_9px_18px_rgba(0,0,0,0.08)]" : "shadow-none"
-              )}
-            >
-              <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0">
-                  <div className="font-semibold text-[16px] mb-1">{ex.name}</div>
-                  <div className="text-muted text-[13px] leading-[1.4]">{ex.tip}</div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="font-display text-[16px] font-bold text-accent whitespace-nowrap">
-                    {ex.sets} × {ex.reps}
-                  </div>
-                  <div className="text-[12px] text-muted mt-0.5">Rest {ex.rest}</div>
-                  <div className="text-[12px] text-accent2 mt-0.5">{ex.calories} kcal</div>
-                </div>
-                <div className={cn("text-muted transition-transform duration-[250ms]", isExpanded ? "rotate-180" : "rotate-0")}>
-                  ▾
-                </div>
-              </div>
-
-              <div className={cn("overflow-hidden transition-[max-height] duration-[250ms] border-t border-border", isExpanded ? "max-h-[240px] pt-3" : "max-h-0 pt-0")}>
-                {isExpanded && ex.howTo && ex.howTo.length > 0 && (
-                  <>
-                    <div className="text-[12px] font-bold tracking-[1px] text-muted mb-2">
-                      HOW TO DO IT
-                    </div>
-                    <ol className="pl-5 mb-2 list-decimal">
-                      {ex.howTo.map((step, idx) => (
-                        <li key={idx} className="text-[13px] mb-1">{step}</li>
-                      ))}
-                    </ol>
-                  </>
-                )}
-
-                {isExpanded && (
-                  <a
-                    href={youtubeSearchUrl(ex.name)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[12px] text-accent font-bold no-underline"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    Watch on YouTube ↗
-                  </a>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </Card>
-
-      {/* Cool-down */}
-      {workout.cooldown?.length > 0 && (
-        <Card>
-          <div className="font-display text-[13px] font-bold uppercase tracking-[2px] text-muted pb-2.5 border-b border-border mb-3">
-            🧘 Cool-Down
-          </div>
-          {workout.cooldown.map((w, i) => (
-            <div key={i} className={cn("flex justify-between py-[11px]", i < workout.cooldown.length - 1 ? "border-b border-border" : "")}>
-              <div>
-                <div className="font-medium text-[15px]">{w.name}</div>
-                <div className="text-[13px] text-muted mt-0.5">{w.description}</div>
-              </div>
-              <div className="text-[14px] text-muted shrink-0 ml-3">{w.duration}</div>
-            </div>
-          ))}
-        </Card>
-      )}
-
-
-
-      {showRegeneratePanel && (
-        <div className="no-print bg-surface border border-border rounded-xl p-[18px] mt-2">
-          <div className="text-[13px] font-semibold mb-2.5">What would you like to improve or add?</div>
-          <Textarea
-            value={regenerateFeedback}
-            onChange={v => setRegenerateFeedback(v.slice(0, 300))}
-            placeholder="e.g. More core exercises, less running, add stretching at the end…"
-          />
-          <div className="flex gap-2.5 mt-3">
-            <BtnSecondary style={{ flex: 1 }} onClick={() => setShowRegeneratePanel(false)}>Cancel</BtnSecondary>
-            <BtnPrimary style={{ flex: 2 }} onClick={() => generateWorkout(regenerateFeedback)} disabled={loading}>
-              ⚡ Regenerate
-            </BtnPrimary>
-          </div>
-        </div>
-      )}
-
-      <div className="no-print flex gap-2.5 mt-2">
-        <BtnSecondary style={{ flex: 1 }} onClick={() => { setShowRegeneratePanel(v => !v); }}>
-          ↩ Regenerate
-        </BtnSecondary>
-        <BtnPrimary style={{ flex: 2 }} onClick={() => window.print()}>
-          🖨 Print Workout
-        </BtnPrimary>
-      </div>
-
-      {/* Review section */}
-      <div className="no-print bg-surface border border-border rounded-xl p-5 mt-4">
-        <div className="font-display text-[18px] font-bold uppercase tracking-[1px] mb-3.5">
-          Rate Your Workout
-        </div>
-
-        {reviewSubmitted ? (
-          <div className="text-accent font-semibold text-[15px] text-center py-2">
-            Thanks for your feedback!
-          </div>
-        ) : (
-          <>
-            {/* Stars */}
-            <div className="flex gap-1.5 mb-4">
-              {[1,2,3,4,5].map(n => (
-                <span
-                  key={n}
-                  onClick={() => setReviewRating(n)}
-                  onMouseEnter={() => setReviewHover(n)}
-                  onMouseLeave={() => setReviewHover(0)}
-                  className={cn(
-                    "text-[36px] cursor-pointer transition-colors duration-100 select-none",
-                    n <= (reviewHover || reviewRating) ? "text-accent" : "text-border"
-                  )}
-                >
-                  ★
-                </span>
-              ))}
-            </div>
-
-            <Field label="Comments (optional)">
-              <Textarea
-                value={reviewComment}
-                onChange={v => setReviewComment(v.slice(0, 500))}
-                placeholder="What did you enjoy? What was too hard or too easy?"
-              />
-            </Field>
-
-            <BtnPrimary
-              onClick={submitReview}
-              disabled={!reviewRating || reviewLoading}
-              style={{ marginTop: 12 }}
-            >
-              {reviewLoading ? "Submitting…" : "Submit Review"}
-            </BtnPrimary>
-            {reviewError && <Alert type="error">{reviewError}</Alert>}
-          </>
-        )}
-      </div>
+    <Layout onBack={reset}>
+      <WorkoutScreen
+        key={generation}
+        workout={workout}
+        code={studentCode.toUpperCase()}
+        studentName={studentName}
+        shareId={shareId}
+        streaming={streaming}
+        onRegenerate={(fb) => generateWorkout(fb)}
+      />
+      {error && <Alert type="error">{error}</Alert>}
     </Layout>
   );
 
