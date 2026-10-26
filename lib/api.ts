@@ -9,8 +9,9 @@ import type {
   ReportResponse,
   ReviewInput,
   SaveClassResponse,
-  Workout,
+  WorkoutEvent,
 } from "@/lib/types";
+import { drainLines } from "@/lib/workout-stream";
 
 const SECRET = process.env.NEXT_PUBLIC_INTERNAL_API_SECRET;
 
@@ -49,22 +50,48 @@ export async function apiGetClass(code: string): Promise<ClassLookup> {
 
 // ── Workout generation ────────────────────────────────────────
 
-export async function apiGenerateWorkout({
-  code,
-  studentName,
-  fitnessLevel,
-  limitations,
-  preferences,
-  regenerateFeedback,
-}: GenerateWorkoutInput): Promise<Workout> {
+/**
+ * Stream a workout. `onEvent` fires for every normalized line the server
+ * forwards (meta, warmup, exercise, cooldown, then done or error). Resolves
+ * when the stream ends; rejects on HTTP errors (rate limit, unknown class) or
+ * a network failure. An `error` event is delivered, not thrown, so partial
+ * output already on screen survives.
+ */
+export async function apiGenerateWorkoutStream(
+  input: GenerateWorkoutInput,
+  onEvent: (event: WorkoutEvent) => void,
+  signal?: AbortSignal
+): Promise<void> {
   const res = await fetch("/api/generate-workout", {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ code, studentName, fitnessLevel, limitations, preferences, regenerateFeedback }),
+    body: JSON.stringify(input),
+    signal,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to generate workout");
-  return data.workout;
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to generate workout");
+  }
+  if (!res.body) throw new Error("Streaming is not supported in this browser");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  const handleLine = (line: string) => {
+    if (!line.trim()) return;
+    try {
+      onEvent(JSON.parse(line) as WorkoutEvent);
+    } catch {
+      // A torn line should never happen (the server writes whole lines); skip it.
+    }
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer = drainLines(buffer + decoder.decode(value, { stream: true }), handleLine);
+  }
+  buffer += decoder.decode();
+  if (buffer.trim()) handleLine(buffer);
 }
 
 // ── Reviews ───────────────────────────────────────────────────

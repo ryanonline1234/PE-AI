@@ -12,7 +12,7 @@ The Anthropic API key **never touches the browser** — all AI calls run server-
 | Frontend | Next.js 16 (App Router, TypeScript, Tailwind v4) |
 | Backend  | Next.js API Routes (serverless) |
 | Database | Supabase (Postgres), schema in `supabase/migrations/` |
-| AI       | Anthropic Claude Haiku (server-side only) |
+| AI       | Anthropic Claude Haiku 5.5, streamed (server-side only) |
 | Hosting  | Vercel (git-connected; `main` = production) |
 
 ---
