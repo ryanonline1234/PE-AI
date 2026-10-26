@@ -3,9 +3,12 @@
 _Updated 2026-10-26. Overwrite in place at every handoff._
 
 ## Status
-Tier A (revive + harden) is implemented on branch `revive`, not yet merged or
-deployed to production. Production (`pe-ai.vercel.app`, `main` @ ce10ca6) is
-the June 4 build and works.
+Tier A (revive + harden) is on branch `revive` (commit 793d6f4, pushed) with a
+Vercel preview at https://pe-ai-git-revive-ryanonline1234s-projects.vercel.app
+(behind Vercel Authentication: log in to vercel.com to view). Verified on the
+preview: page + self-hosted fonts, get-class, keepalive auth, generation (15 s).
+Not yet merged. Production (`pe-ai.vercel.app`, `main` @ ce10ca6) is the June 4
+build and still works.
 
 ## What Tier A changed
 - Next 15.2.8 → 16.4.3, React 19.3, Anthropic SDK 1.3, supabase-js 2.118,
@@ -22,8 +25,8 @@ the June 4 build and works.
   switched to sensitive type.
 
 ## Next action
-1. Ryan reviews the Vercel preview for branch `revive`, tries the teacher flow
-   (create → save → key shown → reload on a fresh browser → key required).
+1. Ryan reviews the preview, tries the teacher flow (create → save → key shown →
+   reload on a fresh browser → key required), then merges the PR.
 2. Merge `revive` → `main` (deploys production). The 16 existing classes have
    no key; whoever saves one next claims it — all 16 are Ryan's test classes.
 3. Then Tier B (gym-floor): streaming generation + Haiku 5.5 measurement,
