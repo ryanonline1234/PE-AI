@@ -3,12 +3,10 @@
 _Updated 2026-10-26. Overwrite in place at every handoff._
 
 ## Status
-Tier A (revive + harden) is on branch `revive` (commit 793d6f4, pushed) with a
-Vercel preview at https://pe-ai-git-revive-ryanonline1234s-projects.vercel.app
-(behind Vercel Authentication: log in to vercel.com to view). Verified on the
-preview: page + self-hosted fonts, get-class, keepalive auth, generation (15 s).
-Not yet merged. Production (`pe-ai.vercel.app`, `main` @ ce10ca6) is the June 4
-build and still works.
+Tier A (revive + harden) is **live in production** at pe-ai.vercel.app
+(`main` @ 1e2b529, merged from PR #2 on 2026-10-26). Verified on production:
+page + self-hosted fonts, API gate, keepalive auth, teacher-key claim + 403,
+generation (12 s). All 16 pre-existing classes are still unclaimed (null key).
 
 ## What Tier A changed
 - Next 15.2.8 → 16.4.3, React 19.3, Anthropic SDK 1.3, supabase-js 2.118,
@@ -25,12 +23,13 @@ build and still works.
   switched to sensitive type.
 
 ## Next action
-1. Ryan reviews the preview, tries the teacher flow (create → save → key shown →
-   reload on a fresh browser → key required), then merges the PR.
-2. Merge `revive` → `main` (deploys production). The 16 existing classes have
-   no key; whoever saves one next claims it — all 16 are Ryan's test classes.
-3. Then Tier B (gym-floor): streaming generation + Haiku 5.5 measurement,
-   persisted workouts with a share link, "Go" mode with timers + wake lock, PWA.
+1. Confirm the keep-alive cron fired (Vercel → pe-ai → Cron Jobs, first run
+   12:00 UTC 2026-10-27) and that `rate_limits` is filling sanely after the
+   teacher's first real class.
+2. Tier B (gym-floor): streaming generation + Haiku 5.5 measurement, persisted
+   workouts with a share link, "Go" mode with timers + wake lock, PWA.
+3. Tier C: review history across days, per-day generation counts, whole-class
+   workout mode.
 
 ## Known gaps / not verified
 - Rate-limit thresholds are a first guess; watch `rate_limits` after the first
