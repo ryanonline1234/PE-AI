@@ -18,6 +18,7 @@ export function WorkoutScreen({
   streaming = false,
   onRegenerate,
   makeOwnHref,
+  variant = "full",
 }: {
   workout: Workout;
   code: string;
@@ -29,6 +30,8 @@ export function WorkoutScreen({
   onRegenerate?: (feedback: string) => void;
   /** Shown on the shared page instead of Regenerate. */
   makeOwnHref?: string;
+  /** "preview": the teacher's sample — workout only, no actions or review. */
+  variant?: "full" | "preview";
 }) {
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
   const [showRegeneratePanel, setShowRegeneratePanel] = useState(false);
@@ -101,10 +104,18 @@ export function WorkoutScreen({
     <>
       {goMode && <GoMode workout={workout} onClose={() => setGoMode(false)} onFinish={finishGoMode} />}
 
+      {/* Regeneration note: what the AI changed and why */}
+      {workout.note && (
+        <div className="bg-surface border border-border border-l-[3px] border-l-accent2 rounded-xl px-5 py-4 mb-4">
+          <div className="text-[11px] font-semibold tracking-[2px] uppercase text-accent2 mb-1.5">What I changed</div>
+          <div className="text-[15px] leading-[1.55]">{workout.note}</div>
+        </div>
+      )}
+
       {/* Hero */}
       <div className="print-card bg-[linear-gradient(135deg,#13131c_0%,#1a1a2e_100%)] border border-border border-t-[3px] border-t-accent rounded-xl p-7 mb-4">
         <div className="text-[11px] font-semibold tracking-[2px] uppercase text-accent mb-1.5">
-          {studentName ? `${studentName}'s Workout` : "Your Workout"}
+          {variant === "preview" ? "Sample student" : studentName ? `${studentName}'s Workout` : "Your Workout"}
         </div>
         {workout.title ? (
           <div className="font-display text-[40px] font-black uppercase leading-none mb-[18px]">
@@ -238,7 +249,7 @@ export function WorkoutScreen({
         </div>
       )}
 
-      {!streaming && (
+      {!streaming && variant === "full" && (
         <>
           <div className="no-print mt-2">
             <BtnPrimary onClick={() => setGoMode(true)} disabled={workout.exercises.length === 0}>

@@ -46,6 +46,17 @@ export function parseModelLine(line: string): WorkoutEvent | null {
     return null;
   }
   switch (o.type) {
+    case "note": {
+      const text = str(o.text, 400);
+      return text ? { kind: "note", text } : null;
+    }
+    case "question": {
+      const question = str(o.question, 160);
+      const options = Array.isArray(o.options)
+        ? o.options.map((x) => str(x, 60)).filter(Boolean).slice(0, 4)
+        : [];
+      return question ? { kind: "question", question: { question, options } } : null;
+    }
     case "meta":
       return {
         kind: "meta",
@@ -73,6 +84,8 @@ export function parseModelLine(line: string): WorkoutEvent | null {
 /** Fold one event into a workout. Returns a new object (safe for React state). */
 export function applyEvent(w: Workout, ev: WorkoutEvent): Workout {
   switch (ev.kind) {
+    case "note":
+      return { ...w, note: ev.text };
     case "meta":
       return { ...w, title: ev.title, totalCalories: ev.totalCalories, totalDuration: ev.totalDuration };
     case "warmup":
