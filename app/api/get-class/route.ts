@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   // 3. Look up in Supabase. Never return the teacher key hash.
   const { data, error } = await supabase
     .from("pe_classes")
-    .select("config, teacher_key_hash")
+    .select("config, teacher_key_hash, owner_id")
     .eq("code", code)
     .single();
 
@@ -35,6 +35,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Class not found" }, { status: 404 });
   }
 
-  // hasTeacherKey lets the teacher UI know whether to ask for a key before saving.
-  return NextResponse.json({ config: data.config, hasTeacherKey: Boolean(data.teacher_key_hash) });
+  // hasTeacherKey lets the teacher UI know whether to ask for a key before saving;
+  // managed says a signed-in teacher account owns it. Never the hash or the owner id.
+  return NextResponse.json({
+    config: data.config,
+    hasTeacherKey: Boolean(data.teacher_key_hash),
+    managed: Boolean(data.owner_id),
+  });
 }

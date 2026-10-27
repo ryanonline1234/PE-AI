@@ -116,3 +116,29 @@ student, and for an explanation after a regeneration. Ryan went with recs:
   with the workout and shown on the share page.
 - **Teacher sample preview** reuses the generation route with `sample: true`
   (typical student, nothing saved, same rate limits).
+
+## 2026-10-26 — Teacher accounts built with the recs, as a soft launch
+Ryan: "please update it first" — build the account system he had already
+configured (Google Cloud project "PE.AI", Supabase Google provider, email
+sign-up off, redirect URLs, Before User Created hook, app published). All five
+decisions in docs/01 §7 went with the recs:
+1. Teachers sign in; students keep class codes and never sign in.
+2. Teacher key stays for claiming existing classes (code + key, or code alone
+   for legacy classes that never got a key).
+3. Grouping is many-to-many `class_workouts`.
+4. Google Cloud project "PE.AI" (done by Ryan).
+5. Student-domain accounts can sign in; Ryan's is promoted to `admin` by hand.
+
+One deviation, on purpose: the classic anonymous "/" flow (create a class, get
+a teacher key) still works alongside accounts, so a sign-in problem on the day
+of the pilot can't lock a teacher out. Rec 2's "new classes require sign-in"
+is one small change in save-class once Ryan has signed in for real.
+
+Mechanics: `@supabase/ssr` cookie sessions; `proxy.ts` (Next 16 middleware)
+only on /teacher and /login; route handlers write cookies onto their own
+responses (`createRouteClient`). Reads on teacher pages go through the
+user-scoped client so RLS (migration 000006) keeps teachers apart — verified
+with a self-rolling-back SQL test (teacher A sees only A's class + A's own
+samples; students and anon see nothing). Writes stay in API routes with the
+service role after an ownership check. Signed-in teachers' sample previews are
+saved with `created_by` and appear under "My workouts".

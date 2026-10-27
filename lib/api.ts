@@ -46,7 +46,7 @@ export async function apiGetClass(code: string): Promise<ClassLookup> {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Class not found");
-  return { config: data.config as ClassConfig, hasTeacherKey: Boolean(data.hasTeacherKey) };
+  return { config: data.config as ClassConfig, hasTeacherKey: Boolean(data.hasTeacherKey), managed: Boolean(data.managed) };
 }
 
 // ── Teacher AI check ──────────────────────────────────────────
@@ -138,3 +138,24 @@ export async function apiGenerateReport(code: string, teacherKey: string): Promi
   if (!res.ok) throw new Error(data.error || "Failed to generate report");
   return data;
 }
+
+// ── Signed-in teacher accounts ───────────────────────────────
+// The session cookie rides along automatically (same origin).
+
+async function postJson<T>(url: string, body: unknown, method = "POST"): Promise<T> {
+  const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Something went wrong");
+  return data as T;
+}
+
+export const apiCreateClass = (label: string) => postJson<{ code: string }>("/api/teacher/class", { label });
+
+export const apiUpdateClass = (code: string, patch: { label?: string; archived?: boolean }) =>
+  postJson<{ ok: true }>("/api/teacher/class", { code, ...patch }, "PATCH");
+
+export const apiClaimClass = (code: string, teacherKey: string) =>
+  postJson<{ code: string; already?: boolean }>("/api/claim-class", { code, teacherKey });
+
+export const apiFileWorkout = (code: string, workoutId: string, filed: boolean) =>
+  postJson<{ ok: true; filed: boolean }>("/api/class-workouts", { code, workoutId, filed });

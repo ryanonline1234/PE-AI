@@ -3,15 +3,21 @@
 _Updated 2026-10-26. Overwrite in place at every handoff._
 
 ## Status
-Tier A, Tier B, and the AI-conversation features are **live in production**
-at pe-ai.vercel.app (`main` @ edda0b5, PR #4 merged 2026-10-26). Verified on
-production after the deploy: teacher AI check answers, a vague injury makes
-the student flow ask first, regeneration opens with a note that also shows on
-the saved page.
+Live in production: Tier A, Tier B, AI-conversation features, privacy/terms.
+Branch `teacher-accounts` (PR open, shipping to production on Ryan's request):
+Mitty Google sign-in for teachers, /teacher dashboard (classes with labels and
+stats, claim an existing class, My workouts with filing), /teacher/[code]
+class pages (settings editor, filed workouts, student workouts by day,
+ratings, archive). Classic code + teacher key flow on "/" unchanged.
 
-Teacher accounts with Mitty Google sign-in are designed in
-`docs/01-teacher-accounts.md` and **not built**; they wait on Ryan's
-decisions (§7 there) and his Google Cloud + Supabase dashboard steps (§4).
+Verified: tsc/lint/build; RLS with a rolled-back SQL test; signed-out
+redirects, the Google hand-off (hd=*, PKCE cookie, correct callback), open-
+redirect guard, callback errors, 401s on account APIs, classic flow end to end
+in the browser. NOT verified: anything signed in (needs a real Google sign-in).
+
+The UI revamp is parked on branch `ui-revamp` (classic UI frozen as tag
+`ui-classic-v1` + branch `ui-classic`, reference shots in docs/ui-classic)
+until Ryan gives the green light.
 
 ## What Tier B changed
 - **Haiku 5.5, streamed.** `generate-workout` asks for JSON Lines and forwards
@@ -45,8 +51,10 @@ and sw.js served; 404 for bad ids.
 - Test data: class HMJ8TW has several smoke-test workouts and one 4-star review.
 
 ## Next action
-1. Ryan answers the five decisions in `docs/01-teacher-accounts.md` §7 and
-   does the dashboard steps in §4; then Claude builds teacher accounts.
-2. Ryan tries Go mode and the question flow on a real phone (wake lock, chime, share sheet, install).
-3. Tier C: review history, per-day counts, whole-class mode (fold into the
-   teacher dashboard once accounts exist).
+1. Ryan signs in at pe-ai.vercel.app/login with his Mitty account; Claude sets
+   his profile to `admin` (`update profiles set role='admin' where email=…`).
+2. Ryan creates a class, previews a sample, files it; checks /teacher.
+3. Then flip rec 2: new classes require sign-in (save-class) once real
+   sign-ins work; tell the PE teacher to sign in and claim their class.
+4. UI revamp resumes only on Ryan's green light (branch `ui-revamp`).
+5. Real-phone check of Go mode and the question flow.

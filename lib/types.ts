@@ -87,6 +87,8 @@ export interface ClassLookup {
   config: ClassConfig;
   /** True once the class has a teacher key; the teacher UI then asks for it before saving. */
   hasTeacherKey: boolean;
+  /** True when a signed-in teacher account owns the class. */
+  managed: boolean;
 }
 
 export interface SaveClassResponse {

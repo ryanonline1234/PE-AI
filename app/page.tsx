@@ -1,23 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { apiSaveClass, apiGetClass, apiGenerateWorkoutStream, apiGenerateReport, apiClarifyClass } from "@/lib/api";
-import { configSignature } from "@/lib/class-config";
+import Link from "next/link";
+import { apiGetClass, apiGenerateWorkoutStream } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { recallTeacherKey, rememberTeacherKey } from "@/lib/teacher-key-store";
 import { applyEvent } from "@/lib/workout-stream";
-import { EMPTY_WORKOUT, type AskQuestion, type ClassCheck, type ClassConfig, type FitnessLevel, type QA, type ReportMeta, type Workout } from "@/lib/types";
+import { EMPTY_WORKOUT, type AskQuestion, type ClassConfig, type FitnessLevel, type QA, type SaveClassResponse, type Workout } from "@/lib/types";
 import { QuestionList, collectAnswers, NO_ANSWERS, type Answers } from "@/components/QuestionList";
 import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle, Chip, Field, Layout, Spinner, TextInput, Textarea } from "@/components/ui";
 import { WorkoutScreen } from "@/components/WorkoutScreen";
+import { ClassEditor, DEFAULT_CONFIG } from "@/components/ClassEditor";
 
 type View = "landing" | "teacher" | "student" | "student-form" | "student-questions" | "workout";
-
-/** The teacher's AI check in progress: what the AI said, and the answers so far. */
-interface CheckState extends ClassCheck {
-  round: number;
-  answers: Answers;
-}
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -27,17 +22,6 @@ function genCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
-
-const DEFAULT_CONFIG: ClassConfig = {
-  duration: 30,
-  minCalories: 150,
-  equipment: "",
-  intensity: "moderate",
-  focus: "mixed",
-  customPrompt: "",
-  summary: "",
-  clarifications: [],
-};
 
 // ─────────────────────────────────────────────────────────────
 // Main App
@@ -51,8 +35,11 @@ export default function PEApp() {
   const [classCode,      setClassCode]      = useState("");
   const [config,         setConfig]         = useState<ClassConfig>(DEFAULT_CONFIG);
   const [loadCodeInput,  setLoadCodeInput]  = useState("");
-  const [saveMsg,        setSaveMsg]        = useState("");
   const [copied,         setCopied]         = useState(false);
+  // Bumped whenever a different class is opened, so the editor remounts fresh.
+  const [editorNonce,    setEditorNonce]    = useState(0);
+  // The class belongs to a signed-in teacher account and has no teacher key.
+  const [accountOnly,    setAccountOnly]    = useState(false);
   // Teacher key: the per-class secret that gates saving + reports. Students
   // never see it. `teacherKey` is the one in use (remembered or just issued);
   // `teacherKeyInput` is what a teacher types on a new device.
@@ -60,23 +47,7 @@ export default function PEApp() {
   const [teacherKeyInput, setTeacherKeyInput] = useState("");
   const [needsTeacherKey, setNeedsTeacherKey] = useState(false);
   const [issuedKey,       setIssuedKey]       = useState("");
-  // AI check: runs on Save when the settings changed since the last confirmed
-  // check. `checkedSig` is the signature of the settings the saved summary describes.
-  const [check,          setCheck]          = useState<CheckState | null>(null);
-  const [checking,       setChecking]       = useState(false);
-  const [checkError,     setCheckError]     = useState("");
-  const [checkedSig,     setCheckedSig]     = useState("");
-  // Teacher's sample-workout preview (never saved).
-  const [sample,         setSample]         = useState<Workout | null>(null);
-  const [sampleStreaming, setSampleStreaming] = useState(false);
-  const [sampleError,    setSampleError]    = useState("");
-  const sampleAbortRef = useRef<AbortController | null>(null);
   const [copiedKey,       setCopiedKey]       = useState(false);
-  const [report,         setReport]         = useState<string | null>(null);
-  const [reportMeta,     setReportMeta]     = useState<ReportMeta | null>(null);
-  const [reportMsg,      setReportMsg]      = useState("");
-  const [reportLoading,  setReportLoading]  = useState(false);
-  const [reportError,    setReportError]    = useState("");
 
   // Student state
   const [studentCode,    setStudentCode]    = useState("");
@@ -103,26 +74,13 @@ export default function PEApp() {
   const [error,          setError]          = useState("");
   const [workout,        setWorkout]        = useState<Workout | null>(null);
 
-  // /?code=ABC123 (from a shared workout's "Make my own" or a teacher's link)
-  // drops the student straight into that class.
-  useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("code")?.toUpperCase() ?? "";
-    if (/^[A-Z0-9]{6}$/.test(code)) {
-      // Mount-time URL read: the page is server-rendered as the landing view, so
-      // this can't be a lazy initial state without a hydration mismatch.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setStudentCode(code);
-      setView("student");
-      void joinWithCode(code);
-    }
-  }, []);
 
   // ── Helpers ──────────────────────────────────────────────
 
   function reset() {
     abortRef.current?.abort();
     setView("landing");
-    setError(""); setSaveMsg("");
+    setError("");
     setWorkout(null); setShareId(null); setStreaming(false);
     if (window.location.pathname !== "/" || window.location.search) {
       window.history.replaceState(null, "", "/");
@@ -137,25 +95,15 @@ export default function PEApp() {
     setTeacherKey(""); setTeacherKeyInput(""); setNeedsTeacherKey(false); setIssuedKey("");
   }
 
-  function cfgSet<K extends keyof ClassConfig>(key: K, value: ClassConfig[K]) {
-    setConfig((c) => ({ ...c, [key]: value }));
-  }
-
   // ── Teacher actions ───────────────────────────────────────
 
   function createNewClass() {
     setClassCode(genCode());
     setConfig(DEFAULT_CONFIG);
-    setSaveMsg(""); setError("");
-    setReport(null); setReportMeta(null); setReportMsg("");
+    setError("");
+    setAccountOnly(false);
+    setEditorNonce((n) => n + 1);
     clearTeacherKeyState();
-    clearCheckState("");
-  }
-
-  function clearCheckState(sig: string) {
-    setCheck(null); setCheckError(""); setCheckedSig(sig);
-    sampleAbortRef.current?.abort();
-    setSample(null); setSampleStreaming(false); setSampleError("");
   }
 
   async function loadClass() {
@@ -163,13 +111,12 @@ export default function PEApp() {
     if (!/^[A-Z0-9]{6}$/.test(code)) { setError("Enter a valid 6-character class code."); return; }
     setLoading(true); setError("");
     try {
-      const { config: cfg, hasTeacherKey } = await apiGetClass(code);
+      const { config: cfg, hasTeacherKey, managed } = await apiGetClass(code);
       setClassCode(code);
       setConfig({ ...DEFAULT_CONFIG, ...cfg });
-      // A saved summary describes exactly the settings it was saved with.
-      clearCheckState(cfg.summary ? configSignature({ ...DEFAULT_CONFIG, ...cfg }) : "");
-      setSaveMsg(""); setIssuedKey("");
-      setReport(null); setReportMeta(null); setReportMsg("");
+      setIssuedKey("");
+      setAccountOnly(managed && !hasTeacherKey);
+      setEditorNonce((n) => n + 1);
       // This browser may already know the key for this class.
       const remembered = recallTeacherKey(code);
       setTeacherKey(remembered);
@@ -181,115 +128,20 @@ export default function PEApp() {
     setLoading(false);
   }
 
-  /** Returns true when the class was saved. */
-  async function saveClass(toSave: ClassConfig = config): Promise<boolean> {
-    let ok = false;
-    setLoading(true); setError(""); setSaveMsg("");
-    try {
-      const key = teacherKey || teacherKeyInput;
-      const result = await apiSaveClass(classCode, toSave, key);
-      if (result.teacherKey) {
-        // First save of this class: the server issued the key. Show it once.
-        setIssuedKey(result.teacherKey);
-        setTeacherKey(result.teacherKey);
-        rememberTeacherKey(classCode, result.teacherKey);
-      } else if (key && key !== teacherKey) {
-        // A typed key was accepted: remember it on this device.
-        setTeacherKey(key);
-        rememberTeacherKey(classCode, key);
-      }
-      setNeedsTeacherKey(false);
-      setConfig(toSave);
-      setSaveMsg("Saved! Share the class code with your students.");
-      ok = true;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+  /** After the editor saves: remember the key that worked, or show a newly issued one. */
+  function handleSaved(result: SaveClassResponse) {
+    const key = teacherKey || teacherKeyInput;
+    if (result.teacherKey) {
+      // First save of this class: the server issued the key. Show it once.
+      setIssuedKey(result.teacherKey);
+      setTeacherKey(result.teacherKey);
+      rememberTeacherKey(classCode, result.teacherKey);
+    } else if (key && key !== teacherKey) {
+      // A typed key was accepted: remember it on this device.
+      setTeacherKey(key);
+      rememberTeacherKey(classCode, key);
     }
-    setLoading(false);
-    return ok;
-  }
-
-  // ── Teacher AI check ──────────────────────────────────────
-  // Save → if the settings changed since the last confirmed check, the AI reads
-  // them back and may ask up to three questions. Answers go back for another
-  // round (max 3); "Looks right" saves the summary + answers with the class.
-
-  function onSaveClick() {
-    if (configSignature(config) === checkedSig) { void saveClass(); return; }
-    void runCheck(config, 1);
-  }
-
-  async function runCheck(cfg: ClassConfig, round: number) {
-    setChecking(true); setCheckError(""); setSaveMsg(""); setError("");
-    try {
-      const result = await apiClarifyClass(cfg, round);
-      setCheck({ ...result, round, answers: NO_ANSWERS });
-    } catch (e) {
-      setCheck(null);
-      setCheckError(e instanceof Error ? e.message : String(e));
-    }
-    setChecking(false);
-  }
-
-  /** Fold answered questions into the class's saved clarifications. */
-  function withAnswers(cfg: ClassConfig, answered: QA[]): ClassConfig {
-    if (answered.length === 0) return cfg;
-    return { ...cfg, clarifications: [...(cfg.clarifications ?? []), ...answered].slice(-6) };
-  }
-
-  function sendCheckAnswers() {
-    if (!check) return;
-    const next = withAnswers(config, collectAnswers(check.questions, check.answers));
-    setConfig(next);
-    void runCheck(next, check.round + 1);
-  }
-
-  async function confirmCheckAndSave() {
-    if (!check) return;
-    const next = { ...withAnswers(config, collectAnswers(check.questions, check.answers)), summary: check.summary };
-    // Keep the confirmed summary in the form even if the save fails (wrong
-    // key, network), so a retry doesn't lose it.
-    setConfig(next);
-    setCheck(null);
-    if (await saveClass(next)) setCheckedSig(configSignature(next));
-  }
-
-  async function saveWithoutCheck() {
-    // The old summary no longer describes these settings, so drop it.
-    setCheck(null); setCheckError("");
-    await saveClass({ ...config, summary: "" });
-  }
-
-  function removeClarification(index: number) {
-    setConfig((c) => ({ ...c, clarifications: (c.clarifications ?? []).filter((_, i) => i !== index) }));
-  }
-
-  async function previewSample() {
-    sampleAbortRef.current?.abort();
-    const controller = new AbortController();
-    sampleAbortRef.current = controller;
-    setSample(EMPTY_WORKOUT); setSampleStreaming(true); setSampleError("");
-    let latest: Workout = EMPTY_WORKOUT;
-    let failed = "";
-    try {
-      await apiGenerateWorkoutStream(
-        { code: classCode, studentName: "", fitnessLevel: "moderate", limitations: "", preferences: "", regenerateFeedback: "", sample: true },
-        (ev) => {
-          if (ev.kind === "error") failed = ev.message;
-          else if (ev.kind !== "done" && ev.kind !== "question" && ev.kind !== "needs_answers") {
-            latest = applyEvent(latest, ev);
-            setSample(latest);
-          }
-        },
-        controller.signal
-      );
-    } catch (e) {
-      if (controller.signal.aborted) return;
-      failed = e instanceof Error ? e.message : String(e);
-    }
-    if (controller.signal.aborted) return;
-    setSampleStreaming(false);
-    if (failed) { setSampleError(failed); if (latest.exercises.length === 0) setSample(null); }
+    setNeedsTeacherKey(false);
   }
 
   // ── Student actions ───────────────────────────────────────
@@ -311,6 +163,20 @@ export default function PEApp() {
     }
     setLoading(false);
   }
+
+  // /?code=ABC123 (from a shared workout's "Make my own" or a teacher's link)
+  // drops the student straight into that class.
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("code")?.toUpperCase() ?? "";
+    if (/^[A-Z0-9]{6}$/.test(code)) {
+      // Mount-time URL read: the page is server-rendered as the landing view, so
+      // this can't be a lazy initial state without a hydration mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStudentCode(code);
+      setView("student");
+      void joinWithCode(code);
+    }
+  }, []);
 
   async function generateWorkout(feedback = "", opts: { answers?: QA[]; skipQuestions?: boolean } = {}) {
     // Accumulate regenerate feedback so context from earlier regenerations isn't
@@ -393,18 +259,6 @@ export default function PEApp() {
     }
   }
 
-  async function generateDayReport() {
-    setReportLoading(true); setReportError(""); setReport(null); setReportMeta(null); setReportMsg("");
-    try {
-      const { report: r, meta, message } = await apiGenerateReport(classCode, teacherKey || teacherKeyInput);
-      if (!r) { setReportMsg(message || "No reviews yet."); }
-      else { setReport(r); setReportMeta(meta ?? null); }
-    } catch (e) {
-      setReportError(e instanceof Error ? e.message : String(e));
-    }
-    setReportLoading(false);
-  }
-
   function copyCode() {
     navigator.clipboard.writeText(classCode);
     setCopied(true);
@@ -485,6 +339,10 @@ export default function PEApp() {
             </div>
           ))}
         </div>
+
+        <div className="text-muted text-[14px] mt-6">
+          Teachers: <Link href="/login?next=/teacher" className="text-accent">sign in with your Mitty account</Link>
+        </div>
       </div>
     </Layout>
   );
@@ -495,9 +353,22 @@ export default function PEApp() {
       <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
         Teacher Dashboard
       </div>
-      <div className="text-muted text-[15px] mb-8">
+      <div className="text-muted text-[15px] mb-6">
         Configure your class and share the code with students.
       </div>
+
+      <Link
+        href="/login?next=/teacher"
+        className="flex items-center justify-between gap-4 bg-surface border border-accent2 rounded-xl px-5 py-4 mb-6 no-underline text-text"
+      >
+        <div>
+          <div className="font-display text-[18px] font-bold uppercase tracking-[0.5px]">Sign in with your Mitty account</div>
+          <div className="text-muted text-[13px] leading-[1.45] mt-0.5">
+            Keep every class in one place, see each student&apos;s workout, and file the good ones. No teacher key needed.
+          </div>
+        </div>
+        <div className="text-accent2 font-display text-[22px] font-bold shrink-0">→</div>
+      </Link>
 
       {/* Load existing */}
       <Card>
@@ -588,211 +459,23 @@ export default function PEApp() {
             </div>
           )}
 
-          <Card>
-            <CardTitle>Workout Parameters</CardTitle>
-
-            <Field label={`Duration — ${config.duration} min`}>
-              <input type="range" min="10" max="90" step="5" value={config.duration}
-                onChange={e => cfgSet("duration", +e.target.value)}
-                className="w-full accent-accent"
-              />
-            </Field>
-
-            <Field label={`Min Calories to Burn — ${config.minCalories} kcal`}>
-              <input type="range" min="50" max="600" step="25" value={config.minCalories}
-                onChange={e => cfgSet("minCalories", +e.target.value)}
-                className="w-full accent-accent"
-              />
-            </Field>
-
-            <Field label="Intensity">
-              <div className="flex flex-wrap gap-2">
-                {([["Low","low"],["Moderate","moderate"],["High","high"]] as const).map(([l,v]) =>
-                  <Chip key={v} label={l} value={v} current={config.intensity} onChange={val => cfgSet("intensity", val)} />
-                )}
-              </div>
-            </Field>
-
-            <Field label="Workout Focus">
-              <div className="flex flex-wrap gap-2">
-                {([["Mixed","mixed"],["Cardio","cardio"],["Strength","strength"],["Flexibility","flexibility"]] as const).map(([l,v]) =>
-                  <Chip key={v} label={l} value={v} current={config.focus} onChange={val => cfgSet("focus", val)} />
-                )}
-              </div>
-            </Field>
-
-            <Field label="Equipment Available">
-              <Textarea
-                value={config.equipment}
-                onChange={v => cfgSet("equipment", v.slice(0, 500))}
-                placeholder="e.g. No equipment — bodyweight only, resistance bands, mats, jump ropes, full gym with free weights…"
-              />
-            </Field>
-
-            <Field label="Custom Instructions (optional — max 500 chars)">
-              <Textarea
-                value={config.customPrompt}
-                onChange={v => cfgSet("customPrompt", v.slice(0, 500))}
-                placeholder="e.g. Focus on teamwork exercises, avoid jumping movements, theme this week around the Olympics…"
-              />
-              <div className="text-[12px] text-muted mt-1 text-right">
-                {config.customPrompt.length}/500
-              </div>
-            </Field>
-
-            {(config.summary || (config.clarifications?.length ?? 0) > 0) && (
-              <Field label="What the AI knows about this class">
-                <div className="bg-surface2 border border-border rounded-lg px-4 py-3.5">
-                  {config.summary && (
-                    <div className="text-[14px] leading-[1.55] mb-1">{config.summary}</div>
-                  )}
-                  {(config.clarifications ?? []).map((qa, i) => (
-                    <div key={i} className="flex items-start justify-between gap-3 border-t border-border pt-2.5 mt-2.5">
-                      <div className="text-[13px] leading-[1.45]">
-                        <div className="text-muted">{qa.question}</div>
-                        <div>{qa.answer}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeClarification(i)}
-                        aria-label="Remove this answer"
-                        className="text-muted bg-transparent border-0 cursor-pointer text-[16px] leading-none px-1"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </Field>
-            )}
-          </Card>
-
-          {check ? (
+          {accountOnly && (
             <Card style={{ borderColor: "var(--accent2)" }}>
-              <div className="text-[11px] font-semibold tracking-[2px] uppercase text-accent2 mb-2">
-                AI check{check.round > 1 ? ` · round ${check.round}` : ""}
+              <CardTitle>Managed From A Teacher Account</CardTitle>
+              <div className="text-muted text-[14px] leading-[1.5]">
+                This class belongs to a teacher&apos;s Mitty account. To change it,{" "}
+                <Link href="/login?next=/teacher" className="text-accent">sign in</Link> with that account.
               </div>
-              <div className="text-[15px] leading-[1.6] mb-5">{check.summary}</div>
-              {check.questions.length > 0 && (
-                <div className="mb-5">
-                  <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-3">
-                    A few things to pin down
-                  </div>
-                  <QuestionList
-                    questions={check.questions}
-                    answers={check.answers}
-                    onChange={(answers) => setCheck({ ...check, answers })}
-                    accent="accent2"
-                  />
-                </div>
-              )}
-              {check.questions.length > 0 ? (
-                <div className="flex gap-2.5">
-                  <BtnSecondary style={{ flex: 1 }} onClick={confirmCheckAndSave} disabled={loading || checking || keyMissing}>
-                    Save as is
-                  </BtnSecondary>
-                  <BtnPrimary
-                    style={{ flex: 2 }}
-                    onClick={sendCheckAnswers}
-                    disabled={checking || collectAnswers(check.questions, check.answers).length === 0}
-                  >
-                    {checking ? "Checking…" : "Send answers"}
-                  </BtnPrimary>
-                </div>
-              ) : (
-                <div className="flex gap-2.5">
-                  <BtnSecondary style={{ flex: 1 }} onClick={() => setCheck(null)}>Edit settings</BtnSecondary>
-                  <BtnPrimary style={{ flex: 2 }} onClick={confirmCheckAndSave} disabled={loading || keyMissing}>
-                    {loading ? "Saving…" : "Looks right — save"}
-                  </BtnPrimary>
-                </div>
-              )}
             </Card>
-          ) : (
-            <BtnPrimary onClick={onSaveClick} disabled={loading || checking || keyMissing}>
-              {checking ? "AI is reading your setup…" : loading ? "Saving…" : "Save Class Settings"}
-            </BtnPrimary>
           )}
-          {checkError && (
-            <>
-              <Alert type="error">{checkError}</Alert>
-              <BtnSecondary style={{ marginTop: 10 }} onClick={saveWithoutCheck} disabled={loading || keyMissing}>
-                Save without the AI check
-              </BtnSecondary>
-            </>
-          )}
-          {saveMsg && <Alert type="success">{saveMsg}</Alert>}
 
-          {saveMsg && !sample && (
-            <BtnSecondary style={{ marginTop: 12 }} onClick={previewSample}>
-              👀 Preview a sample workout
-            </BtnSecondary>
-          )}
-          {sample && (
-            <div className="mt-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="font-display text-[22px] font-bold uppercase tracking-[1px]">Sample workout</div>
-                <button
-                  type="button"
-                  onClick={() => { sampleAbortRef.current?.abort(); setSample(null); setSampleStreaming(false); }}
-                  className="bg-surface2 border border-border text-muted px-3 py-1.5 rounded-lg cursor-pointer text-[13px] font-body"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="text-muted text-[13px] mb-3">
-                What a typical student in this class gets: moderate fitness, no injuries. Not saved.
-              </div>
-              <WorkoutScreen
-                workout={sample}
-                code={classCode}
-                studentName=""
-                shareId={null}
-                streaming={sampleStreaming}
-                variant="preview"
-              />
-              {!sampleStreaming && (
-                <BtnSecondary onClick={previewSample}>↻ Another sample</BtnSecondary>
-              )}
-            </div>
-          )}
-          {sampleError && <Alert type="error">{sampleError}</Alert>}
-
-          {/* Today's report */}
-          <div className="mt-8">
-            <div className="font-display text-[22px] font-bold uppercase tracking-[1px] mb-3">
-              Today&apos;s Workout Report
-            </div>
-            <BtnSecondary onClick={generateDayReport} disabled={reportLoading || keyMissing}>
-              {reportLoading ? "Generating…" : "Generate Today's Report"}
-            </BtnSecondary>
-
-            {reportMsg && (
-              <div className="text-muted text-[14px] mt-3">{reportMsg}</div>
-            )}
-
-            {reportMeta && (
-              <div className="flex gap-6 mt-4 mb-2 flex-wrap">
-                {[
-                  [reportMeta.total, "Responses"],
-                  [`${reportMeta.avgRating} / 5`, "Avg Rating"],
-                ].map(([val, lbl]) => (
-                  <div key={lbl}>
-                    <div className="font-display text-[28px] font-bold text-accent2 leading-none">{val}</div>
-                    <div className="text-[11px] text-muted uppercase tracking-[0.8px] mt-0.5">{lbl}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {report && (
-              <div className="bg-surface2 border border-border rounded-xl p-[18px] mt-2 text-[14px] leading-[1.7] whitespace-pre-wrap">
-                {report}
-              </div>
-            )}
-
-            {reportError && <Alert type="error">{reportError}</Alert>}
-          </div>
+          <ClassEditor
+            key={`${classCode}:${editorNonce}`}
+            code={classCode}
+            initialConfig={config}
+            auth={{ kind: "key", teacherKey: teacherKey || teacherKeyInput, locked: keyMissing || accountOnly }}
+            onSaved={handleSaved}
+          />
         </>
       )}
 
