@@ -1,16 +1,16 @@
 "use client";
 
 // The class settings editor: parameters, the AI check, "what the AI knows",
-// save, sample preview, and today's report. Used by the classic code + teacher
-// key flow on "/" and by signed-in teachers on /teacher/[code].
+// save, sample preview, and today's report. Used on /classes/[code] by the
+// class's owner: a teacher (class) or a student (personal class).
 //
 // Remount it (React `key`) when the class changes; it owns its own form state.
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { apiClarifyClass, apiGenerateReport, apiGenerateWorkoutStream, apiSaveClass } from "@/lib/api";
-import { configSignature } from "@/lib/class-config";
+import { configSignature, DEFAULT_CONFIG } from "@/lib/class-config";
 import { applyEvent } from "@/lib/workout-stream";
-import { EMPTY_WORKOUT, type ClassCheck, type ClassConfig, type QA, type ReportMeta, type SaveClassResponse, type Workout } from "@/lib/types";
+import { EMPTY_WORKOUT, type ClassCheck, type ClassConfig, type QA, type ReportMeta, type Workout } from "@/lib/types";
 import { QuestionList, collectAnswers, NO_ANSWERS, type Answers } from "@/components/QuestionList";
 import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle, Chip, Field, Textarea } from "@/components/ui";
 import { WorkoutScreen } from "@/components/WorkoutScreen";
@@ -21,30 +21,14 @@ interface CheckState extends ClassCheck {
   answers: Answers;
 }
 
-export type EditorAuth =
-  /** Classic flow: the teacher key (typed or remembered). `locked` blocks save/report. */
-  | { kind: "key"; teacherKey: string; locked: boolean }
-  /** Signed-in owner: the server checks the session cookie instead of a key. */
-  | { kind: "account" };
 
-export const DEFAULT_CONFIG: ClassConfig = {
-  duration: 30,
-  minCalories: 150,
-  equipment: "",
-  intensity: "moderate",
-  focus: "mixed",
-  customPrompt: "",
-  summary: "",
-  clarifications: [],
-};
-
-export function ClassEditor({ code, initialConfig, auth, onSaved }: {
+export function ClassEditor({ code, initialConfig, kind }: {
   code: string;
   initialConfig: ClassConfig;
-  auth: EditorAuth;
-  /** Called after every successful save (the classic flow shows an issued key). */
-  onSaved?: (result: SaveClassResponse) => void;
+  /** "personal": a student's own training class — no sample preview, no class report. */
+  kind: "class" | "personal";
 }) {
+  const personal = kind === "personal";
   const start = { ...DEFAULT_CONFIG, ...initialConfig };
   const [config, setConfig] = useState<ClassConfig>(start);
   // A saved summary describes exactly the settings it was saved with.
@@ -68,8 +52,6 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState("");
 
-  const locked = auth.kind === "key" && auth.locked;
-  const teacherKey = auth.kind === "key" ? auth.teacherKey : "";
 
   function cfgSet<K extends keyof ClassConfig>(key: K, value: ClassConfig[K]) {
     setConfig((c) => ({ ...c, [key]: value }));
@@ -80,10 +62,9 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
     let ok = false;
     setSaving(true); setError(""); setSaveMsg("");
     try {
-      const result = await apiSaveClass(code, toSave, teacherKey);
+      await apiSaveClass(code, toSave);
       setConfig(toSave);
-      setSaveMsg("Saved! Share the class code with your students.");
-      onSaved?.(result);
+      setSaveMsg(personal ? "Saved! Your next workout will use these settings." : "Saved! Share the class code with your students.");
       ok = true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -105,7 +86,7 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
   async function runCheck(cfg: ClassConfig, round: number) {
     setChecking(true); setCheckError(""); setSaveMsg(""); setError("");
     try {
-      const result = await apiClarifyClass(cfg, round);
+      const result = await apiClarifyClass(cfg, round, personal);
       setCheck({ ...result, round, answers: NO_ANSWERS });
     } catch (e) {
       setCheck(null);
@@ -158,7 +139,7 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
     let failed = "";
     try {
       await apiGenerateWorkoutStream(
-        { code, studentName: "", fitnessLevel: "moderate", limitations: "", preferences: "", regenerateFeedback: "", sample: true },
+        { code, fitnessLevel: "moderate", limitations: "", preferences: "", regenerateFeedback: "", sample: true },
         (ev) => {
           if (ev.kind === "error") failed = ev.message;
           else if (ev.kind === "done") setSampleId(ev.id);
@@ -188,7 +169,7 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
   async function generateDayReport() {
     setReportLoading(true); setReportError(""); setReport(null); setReportMeta(null); setReportMsg("");
     try {
-      const { report: r, meta, message } = await apiGenerateReport(code, teacherKey);
+      const { report: r, meta, message } = await apiGenerateReport(code);
       if (!r) { setReportMsg(message || "No reviews yet."); }
       else { setReport(r); setReportMeta(meta ?? null); }
     } catch (e) {
@@ -299,7 +280,7 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
           )}
           {check.questions.length > 0 ? (
             <div className="flex gap-2.5">
-              <BtnSecondary style={{ flex: 1 }} onClick={confirmCheckAndSave} disabled={saving || checking || locked}>
+              <BtnSecondary style={{ flex: 1 }} onClick={confirmCheckAndSave} disabled={saving || checking}>
                 Save as is
               </BtnSecondary>
               <BtnPrimary
@@ -313,21 +294,21 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
           ) : (
             <div className="flex gap-2.5">
               <BtnSecondary style={{ flex: 1 }} onClick={() => setCheck(null)}>Edit settings</BtnSecondary>
-              <BtnPrimary style={{ flex: 2 }} onClick={confirmCheckAndSave} disabled={saving || locked}>
+              <BtnPrimary style={{ flex: 2 }} onClick={confirmCheckAndSave} disabled={saving}>
                 {saving ? "Saving…" : "Looks right — save"}
               </BtnPrimary>
             </div>
           )}
         </Card>
       ) : (
-        <BtnPrimary onClick={onSaveClick} disabled={saving || checking || locked}>
+        <BtnPrimary onClick={onSaveClick} disabled={saving || checking}>
           {checking ? "AI is reading your setup…" : saving ? "Saving…" : "Save Class Settings"}
         </BtnPrimary>
       )}
       {checkError && (
         <>
           <Alert type="error">{checkError}</Alert>
-          <BtnSecondary style={{ marginTop: 10 }} onClick={saveWithoutCheck} disabled={saving || locked}>
+          <BtnSecondary style={{ marginTop: 10 }} onClick={saveWithoutCheck} disabled={saving}>
             Save without the AI check
           </BtnSecondary>
         </>
@@ -335,7 +316,7 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
       {error && <Alert type="error">{error}</Alert>}
       {saveMsg && <Alert type="success">{saveMsg}</Alert>}
 
-      {saveMsg && !sample && (
+      {saveMsg && !sample && !personal && (
         <BtnSecondary style={{ marginTop: 12 }} onClick={previewSample}>
           👀 Preview a sample workout
         </BtnSecondary>
@@ -354,9 +335,7 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
           </div>
           <div className="text-muted text-[13px] mb-3">
             What a typical student in this class gets: moderate fitness, no injuries.{" "}
-            {sampleId
-              ? <>Saved to <Link href="/teacher" className="text-accent">your workouts</Link>.</>
-              : auth.kind === "account" ? "" : "Not saved."}
+            {sampleId && <>Saved to <Link href="/teacher" className="text-accent">your workouts</Link>.</>}
           </div>
           <WorkoutScreen
             workout={sample}
@@ -373,12 +352,12 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
       )}
       {sampleError && <Alert type="error">{sampleError}</Alert>}
 
-      {/* Today's report */}
-      <div className="mt-8">
+      {/* Today's report (teacher classes only) */}
+      {!personal && <div className="mt-8">
         <div className="font-display text-[22px] font-bold uppercase tracking-[1px] mb-3">
           Today&apos;s Workout Report
         </div>
-        <BtnSecondary onClick={generateDayReport} disabled={reportLoading || locked}>
+        <BtnSecondary onClick={generateDayReport} disabled={reportLoading}>
           {reportLoading ? "Generating…" : "Generate Today's Report"}
         </BtnSecondary>
 
@@ -407,7 +386,7 @@ export function ClassEditor({ code, initialConfig, auth, onSaved }: {
         )}
 
         {reportError && <Alert type="error">{reportError}</Alert>}
-      </div>
+      </div>}
     </>
   );
 }

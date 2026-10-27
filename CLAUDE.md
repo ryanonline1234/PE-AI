@@ -1,8 +1,9 @@
 # PE.AI — project notes for agents
 
-Account-less AI workout generator for school PE. Teacher sets parameters → 6-char
-class code → each student gets a Claude-generated workout. Reviews + a teacher
-daily report. Read `STATE.md` first (where we are, next action), `DECISIONS.md`
+AI workout generator for school PE (Archbishop Mitty). Everyone signs in with a
+Mitty Google account. Teacher sets parameters → 6-char class code → each signed-in
+student gets a Claude-generated workout. Rosters, ratings, a daily report, and
+students' own personal classes. Read `STATE.md` first (where we are, next action), `DECISIONS.md`
 for why things are the way they are.
 
 ## Stack
@@ -25,23 +26,23 @@ writes to the production database — that's fine for test classes, don't bulk-e
 - **All AI + DB access is server-side** in `app/api/*`. The browser only talks to
   our routes. `x-internal-secret` is obscurity, not security — rate limits
   (`lib/rate-limit.ts`, Postgres function `rate_limit_check`) are the real cap.
-- **Teacher key** (`lib/teacher-key.ts`): per-class secret, SHA-256 stored,
-  required for `save-class` and `generate-report`. Students only ever need the
-  class code. Legacy classes (null hash) are claimed by their first keyed save.
-- **Teacher config is clamped server-side** in `save-class`; students can't widen it.
-- **Student free text is sanitized** before it reaches the model.
+- **Accounts** (`docs/01-teacher-accounts.md`, DECISIONS 2026-10-27): Supabase Auth
+  with Google, Mitty domains only. Roles: teacher (@mitty.com), student
+  (@mittymonarch.com), admin (set by hand). `lib/supabase-auth.ts` (user-scoped
+  clients, `getAccount`), `lib/teacher-auth.ts` (`callerFromRequest` for API
+  routes), `lib/class-access.ts` (class lookup + "personal classes are owner-only"),
+  `proxy.ts` (session refresh for pages). Pages READ through RLS; API routes WRITE
+  with the service role after an explicit owner/access check. No teacher keys.
+- **Class config is clamped server-side** (`lib/class-config.ts`); nobody can widen it.
+- **Student free text is sanitized** before it reaches the model, and **names never
+  reach the model** (workout prompt and teacher report are name-free).
 - **The AI talks back.** Teacher check (`/api/clarify-class`) stores a confirmed
   `summary` + `clarifications` in the class config; generation may emit
   `question` lines before the workout, and a `note` line on regenerations. The
   JSON Lines event types live in `lib/workout-stream.ts` and `lib/types.ts`.
-- **Teacher accounts** (`docs/01-teacher-accounts.md`): Mitty Google sign-in via
-  Supabase Auth. `lib/supabase-auth.ts` (user-scoped clients, `getAccount`),
-  `lib/teacher-auth.ts` (who's calling an API route), `proxy.ts` (session refresh
-  for /teacher + /login only). Teacher pages READ through RLS; writes go through
-  API routes after an ownership check. A class is controlled by its owner account
-  OR its teacher key. The classic anonymous key flow on "/" still works.
 - **Schema changes go in `supabase/migrations/`** and are applied with the
   Supabase MCP `apply_migration` (or the CLI). Never hand-edit the live schema again.
+  The MCP declines statements containing `drop`; write additive, guarded DDL.
 - **"Today" for reports is the browser's time zone**, defaulting to America/Los_Angeles.
 
 ## Don'ts

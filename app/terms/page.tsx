@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <Layout backHref="/" backLabel="← Home">
-      <Prose title="Terms of Use" updated="October 26, 2026">
+      <Prose title="Terms of Use" updated="October 27, 2026">
         <section>
           <p>
             PE.AI is a free, student-built tool for PE classes. By using it you agree to these terms.
@@ -31,7 +31,7 @@ export default function TermsPage() {
         <section>
           <h2>Use it fairly</h2>
           <ul>
-            <li>Use class codes only for classes you belong to or teach.</li>
+            <li>Sign in only with your own Mitty account, and use class codes only for classes you belong to or teach.</li>
             <li>Don&apos;t try to break, overload, or misuse the site or its AI.</li>
             <li>Don&apos;t put anyone else&apos;s private information in the text boxes.</li>
           </ul>

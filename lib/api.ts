@@ -4,7 +4,6 @@
 // it is NOT the Anthropic key (which stays server-side only).
 import type {
   ClassConfig,
-  ClassLookup,
   GenerateWorkoutInput,
   ReportResponse,
   ReviewInput,
@@ -24,38 +23,26 @@ function headers(): Record<string, string> {
 }
 
 // ── Class management ──────────────────────────────────────────
+// The session cookie identifies the owner; there are no teacher keys.
 
-export async function apiSaveClass(
-  code: string,
-  config: ClassConfig,
-  teacherKey: string
-): Promise<SaveClassResponse> {
+export async function apiSaveClass(code: string, config: ClassConfig): Promise<SaveClassResponse> {
   const res = await fetch("/api/save-class", {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ code, config, teacherKey }),
+    body: JSON.stringify({ code, config }),
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Failed to save class");
   return data;
 }
 
-export async function apiGetClass(code: string): Promise<ClassLookup> {
-  const res = await fetch(`/api/get-class?code=${encodeURIComponent(code)}`, {
-    headers: headers(),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Class not found");
-  return { config: data.config as ClassConfig, hasTeacherKey: Boolean(data.hasTeacherKey), managed: Boolean(data.managed) };
-}
-
 // ── Teacher AI check ──────────────────────────────────────────
 
-export async function apiClarifyClass(config: ClassConfig, round: number): Promise<ClassCheck> {
+export async function apiClarifyClass(config: ClassConfig, round: number, personal = false): Promise<ClassCheck> {
   const res = await fetch("/api/clarify-class", {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ config, round }),
+    body: JSON.stringify({ config, round, personal }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "The AI check failed");
@@ -108,39 +95,33 @@ export async function apiGenerateWorkoutStream(
   if (buffer.trim()) handleLine(buffer);
 }
 
-// ── Reviews ───────────────────────────────────────────────────
+// ── Reviews + reports ─────────────────────────────────────────
 
-export async function apiSubmitReview({
-  code,
-  studentName,
-  rating,
-  comment,
-}: ReviewInput): Promise<{ ok: boolean }> {
+export async function apiSubmitReview({ code, rating, comment, workoutId }: ReviewInput): Promise<{ ok: boolean }> {
   const res = await fetch("/api/submit-review", {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ code, studentName, rating, comment }),
+    body: JSON.stringify({ code, rating, comment, workoutId }),
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Failed to submit review");
   return data;
 }
 
-export async function apiGenerateReport(code: string, teacherKey: string): Promise<ReportResponse> {
+export async function apiGenerateReport(code: string): Promise<ReportResponse> {
   // The report covers "today" in the browser's time zone (the school's), not UTC.
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const res = await fetch("/api/generate-report", {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ code, teacherKey, timeZone }),
+    body: JSON.stringify({ code, timeZone }),
   });
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Failed to generate report");
   return data;
 }
 
-// ── Signed-in teacher accounts ───────────────────────────────
-// The session cookie rides along automatically (same origin).
+// ── Accounts: classes, filing, admin ─────────────────────────
 
 async function postJson<T>(url: string, body: unknown, method = "POST"): Promise<T> {
   const res = await fetch(url, { method, headers: headers(), body: JSON.stringify(body) });
@@ -149,13 +130,14 @@ async function postJson<T>(url: string, body: unknown, method = "POST"): Promise
   return data as T;
 }
 
-export const apiCreateClass = (label: string) => postJson<{ code: string }>("/api/teacher/class", { label });
+/** Teachers get a class; students get a personal class. The server decides. */
+export const apiCreateClass = (label: string) => postJson<{ code: string }>("/api/classes", { label });
 
 export const apiUpdateClass = (code: string, patch: { label?: string; archived?: boolean }) =>
-  postJson<{ ok: true }>("/api/teacher/class", { code, ...patch }, "PATCH");
-
-export const apiClaimClass = (code: string, teacherKey: string) =>
-  postJson<{ code: string; already?: boolean }>("/api/claim-class", { code, teacherKey });
+  postJson<{ ok: true }>("/api/classes", { code, ...patch }, "PATCH");
 
 export const apiFileWorkout = (code: string, workoutId: string, filed: boolean) =>
   postJson<{ ok: true; filed: boolean }>("/api/class-workouts", { code, workoutId, filed });
+
+export const apiAssignClass = (code: string, email: string) =>
+  postJson<{ ok: true }>("/api/admin/assign-class", { code, email });

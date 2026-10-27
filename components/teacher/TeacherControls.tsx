@@ -4,7 +4,7 @@
 // API route, then refreshes the server-rendered page so lists stay in sync.
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { apiClaimClass, apiCreateClass, apiFileWorkout, apiUpdateClass } from "@/lib/api";
+import { apiAssignClass, apiCreateClass, apiFileWorkout, apiUpdateClass } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const input = "w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none";
@@ -15,7 +15,10 @@ function ErrorLine({ msg }: { msg: string }) {
   return msg ? <div className="text-danger text-[13px] mt-2">{msg}</div> : null;
 }
 
-export function NewClassForm() {
+export function NewClassForm({
+  placeholder = "Class name, e.g. Period 3 · Freshman PE",
+  buttonLabel = "+ New class",
+}: { placeholder?: string; buttonLabel?: string }) {
   const router = useRouter();
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,7 +28,7 @@ export function NewClassForm() {
     setBusy(true); setErr("");
     try {
       const { code } = await apiCreateClass(label);
-      router.push(`/teacher/${code}`);
+      router.push(`/classes/${code}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
       setBusy(false);
@@ -38,54 +41,81 @@ export function NewClassForm() {
           className={input}
           value={label}
           onChange={(e) => setLabel(e.target.value.slice(0, 60))}
-          placeholder="Class name, e.g. Period 3 · Freshman PE"
+          placeholder={placeholder}
           aria-label="New class name"
         />
-        <button type="submit" className={btn} disabled={busy}>{busy ? "Creating…" : "+ New class"}</button>
+        <button type="submit" className={btn} disabled={busy}>{busy ? "Creating…" : buttonLabel}</button>
       </div>
       <ErrorLine msg={err} />
     </form>
   );
 }
 
-export function ClaimClassForm() {
+/** Student: type a class code, go to that class's workout page. */
+export function JoinClassForm() {
   const router = useRouter();
   const [code, setCode] = useState("");
-  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (code.length < 6) return;
+    setBusy(true);
+    router.push(`/c/${code}`);
+  }
+  return (
+    <form onSubmit={submit} className="flex gap-2.5">
+      <input
+        className={cn(input, "font-display text-[28px] font-bold tracking-[6px] text-center uppercase py-2")}
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase())}
+        placeholder="ABCD12"
+        aria-label="Class code"
+        autoCapitalize="characters"
+        autoComplete="off"
+      />
+      <button type="submit" className={btn} disabled={busy || code.length < 6}>{busy ? "…" : "Go →"}</button>
+    </form>
+  );
+}
+
+/** Admin: give a pre-accounts class (no owner) to a teacher who has signed in once. */
+export function AssignClassForm({ defaultEmail, code: fixedCode }: { defaultEmail: string; code?: string }) {
+  const router = useRouter();
+  const [code, setCode] = useState(fixedCode ?? "");
+  const [email, setEmail] = useState(defaultEmail);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setErr("");
     try {
-      const res = await apiClaimClass(code, key);
-      router.push(`/teacher/${res.code}`);
+      await apiAssignClass(code, email);
+      router.refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
-      setBusy(false);
     }
+    setBusy(false);
   }
   return (
     <form onSubmit={submit}>
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2.5">
+      <div className="flex gap-2 flex-wrap">
+        {!fixedCode && (
+          <input
+            className={cn(input, "w-[120px] font-display tracking-[3px] uppercase")}
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase())}
+            placeholder="CODE"
+            aria-label="Class code"
+          />
+        )}
         <input
-          className={cn(input, "font-display text-[20px] tracking-[4px] text-center uppercase")}
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase())}
-          placeholder="CLASS CODE"
-          aria-label="Class code"
+          className={cn(input, "flex-1 min-w-[200px] py-2 text-[14px]")}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="teacher@mitty.com"
+          aria-label="Teacher email"
         />
-        <input
-          className={cn(input, "font-display text-[20px] tracking-[3px] text-center uppercase")}
-          value={key}
-          onChange={(e) => setKey(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 9))}
-          placeholder="TEACHER KEY"
-          aria-label="Teacher key"
-        />
-        <button type="submit" className={btn} disabled={busy || code.length < 6}>{busy ? "Adding…" : "Add class"}</button>
-      </div>
-      <div className="text-muted text-[12px] mt-2">
-        Use the teacher key you got when you first saved the class. Classes that never got a key only need the code.
+        <button type="submit" className={ghost} disabled={busy || code.length < 6}>{busy ? "…" : "Assign"}</button>
       </div>
       <ErrorLine msg={err} />
     </form>
@@ -124,14 +154,14 @@ export function LabelEditor({ code, label }: { code: string; label: string }) {
   );
 }
 
-export function ArchiveToggle({ code, archived }: { code: string; archived: boolean }) {
+export function ArchiveToggle({ code, archived, home }: { code: string; archived: boolean; home: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function toggle() {
     setBusy(true);
     try {
       await apiUpdateClass(code, { archived: !archived });
-      router.push(archived ? `/teacher/${code}` : "/teacher");
+      router.push(archived ? `/classes/${code}` : home);
       router.refresh();
     } finally {
       setBusy(false);

@@ -2,34 +2,56 @@ import { NextResponse, type NextRequest } from "next/server";
 import { randomInt } from "crypto";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
-import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
+import { checkRateLimit, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 import { clampConfig } from "@/lib/class-config";
-import { teacherFromRequest } from "@/lib/teacher-auth";
+import { isTeacherAccount } from "@/lib/supabase-auth";
+import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
+import { MAX_PERSONAL_CLASSES } from "@/lib/class-access";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const newCode = () => Array.from({ length: 6 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
 const cleanLabel = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 60) : "");
 
-/** Create a class owned by the signed-in teacher, with default settings. */
+/**
+ * Create a class owned by the caller. Teachers (and admins) get a regular class
+ * students can join; students get a personal class only they can use.
+ */
 export async function POST(request: NextRequest) {
   if (!verifySecret(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { teacher, withCookies } = await teacherFromRequest(request);
-  if (!teacher) return NextResponse.json({ error: "Sign in with your Mitty teacher account first." }, { status: 401 });
+  const { account, withCookies } = await callerFromRequest(request);
+  if (!account) return signInRequired();
 
   const body = await request.json().catch(() => ({}));
   const supabase = createServerClient();
   const limited = await checkRateLimit(supabase, [
-    { name: `create:ip:${clientIp(request)}`, windowSeconds: WINDOW.tenMinutes, limit: 20 },
+    { name: `create:user:${account.id}`, windowSeconds: WINDOW.hour, limit: 20 },
   ]);
   if (limited) return rateLimitedResponse(limited);
+
+  const kind = isTeacherAccount(account) ? "class" : "personal";
+  if (kind === "personal") {
+    const { count } = await supabase
+      .from("pe_classes")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", account.id)
+      .eq("kind", "personal")
+      .eq("archived", false);
+    if ((count ?? 0) >= MAX_PERSONAL_CLASSES) {
+      return NextResponse.json(
+        { error: `You can have up to ${MAX_PERSONAL_CLASSES} personal classes. Archive one to make room.` },
+        { status: 400 }
+      );
+    }
+  }
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = newCode();
     const { error } = await supabase.from("pe_classes").insert({
       code,
+      kind,
       config: clampConfig({}),
-      owner_id: teacher.id,
-      label: cleanLabel(body.label) || null,
+      owner_id: account.id,
+      label: cleanLabel(body.label) || (kind === "personal" ? "My Training" : null),
     });
     if (!error) return withCookies(NextResponse.json({ code }));
     if (error.code !== "23505") {
@@ -40,11 +62,11 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ error: "Couldn't create the class. Try again." }, { status: 500 });
 }
 
-/** Rename or archive one of the teacher's classes. */
+/** Rename or archive one of the caller's classes. */
 export async function PATCH(request: NextRequest) {
   if (!verifySecret(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { teacher, withCookies } = await teacherFromRequest(request);
-  if (!teacher) return NextResponse.json({ error: "Sign in with your Mitty teacher account first." }, { status: 401 });
+  const { account, withCookies } = await callerFromRequest(request);
+  if (!account) return signInRequired();
 
   const body = await request.json().catch(() => ({}));
   const code = typeof body.code === "string" ? body.code.toUpperCase() : "";
@@ -53,11 +75,30 @@ export async function PATCH(request: NextRequest) {
   if (typeof body.archived === "boolean") patch.archived = body.archived;
 
   const supabase = createServerClient();
+  if (body.archived === false) {
+    // Restoring a personal class must respect the same cap as creating one.
+    const { data: cls } = await supabase.from("pe_classes").select("kind").eq("code", code).eq("owner_id", account.id).maybeSingle();
+    if (cls?.kind === "personal") {
+      const { count } = await supabase
+        .from("pe_classes")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", account.id)
+        .eq("kind", "personal")
+        .eq("archived", false);
+      if ((count ?? 0) >= MAX_PERSONAL_CLASSES) {
+        return NextResponse.json(
+          { error: `You can have up to ${MAX_PERSONAL_CLASSES} personal classes. Archive one first.` },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from("pe_classes")
     .update(patch)
     .eq("code", code)
-    .eq("owner_id", teacher.id)
+    .eq("owner_id", account.id)
     .select("code");
   if (error) return NextResponse.json({ error: "Couldn't update the class." }, { status: 500 });
   if (!data || data.length === 0) return NextResponse.json({ error: "Not your class." }, { status: 404 });

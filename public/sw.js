@@ -3,7 +3,11 @@
 //  - page navigations: network-first, falling back to the last cached copy
 //    so the app shell opens on flaky gym Wi-Fi (generation still needs network)
 //  - API calls: never cached
-const VERSION = "v1";
+const VERSION = "v2";
+// Only public pages are kept for offline opens. Signed-in pages (rosters,
+// student emails, workouts) are never cached: a shared Chromebook must not show
+// the last person's data.
+const PUBLIC_PAGES = new Set(["/", "/login", "/privacy", "/terms"]);
 const STATIC = `peai-static-${VERSION}`;
 const PAGES = `peai-pages-${VERSION}`;
 
@@ -39,7 +43,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (request.mode === "navigate") {
+  if (request.mode === "navigate" && PUBLIC_PAGES.has(url.pathname)) {
     event.respondWith(
       fetch(request)
         .then(async (res) => {
