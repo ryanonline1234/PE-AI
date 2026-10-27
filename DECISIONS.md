@@ -87,3 +87,32 @@ and the workout text — no account, no device id. Noindex on the share page.
 assets and keeps the last page copy for offline opens. It does not try to
 make generation work offline (it can't). Serwist/Workbox were considered
 and rejected as weight for a two-rule worker.
+
+## 2026-10-26 — The AI checks its understanding with teachers and students
+Ryan asked for back-and-forth so the AI "actually understands" the teacher and
+student, and for an explanation after a regeneration. Ryan went with recs:
+
+- **Teacher check** (`/api/clarify-class`, structured output, effort low): on
+  Save, when the settings changed since the last confirmed check, the AI says
+  back what every workout will look like and asks 0-3 questions with tap
+  answers. Answers go back for up to 3 rounds. The confirmed `summary` and the
+  `clarifications` (max 6, removable in the UI) are stored in
+  `pe_classes.config` and injected into every generation's system prompt.
+  Measured: no questions on a clear setup; on a messy one it caught "weights"
+  ambiguity, the theme reading, and an impossible calorie target.
+- **Student questions live inside the generation call**, not a separate
+  pre-check, so the common case adds zero latency. The model may emit 1-2
+  `question` lines instead of the workout; the server stops and sends
+  `needs_answers`. Allowed only on a first generation with no answers and no
+  Skip. The first prompt wording ("most students need no questions") made it
+  never ask; the trigger is now concrete: pain/injury/condition without
+  detail, or a preference that clashes with the setup. Measured: asks on
+  "my knee hurts sometimes", "back pain", "asthma" (questions at 2-4 s);
+  silent on blank notes, a specific injury, and clear preferences. Answers
+  are sent to the model only, never stored, and carry over to regenerations.
+- **Regeneration edits the previous workout.** Before this the model never
+  saw it and rerolled from scratch. The client sends `previousId`; the server
+  loads it (same class only) and the stream opens with a `note` line, saved
+  with the workout and shown on the share page.
+- **Teacher sample preview** reuses the generation route with `sample: true`
+  (typical student, nothing saved, same rate limits).

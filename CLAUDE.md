@@ -30,6 +30,11 @@ writes to the production database — that's fine for test classes, don't bulk-e
   class code. Legacy classes (null hash) are claimed by their first keyed save.
 - **Teacher config is clamped server-side** in `save-class`; students can't widen it.
 - **Student free text is sanitized** before it reaches the model.
+- **The AI talks back.** Teacher check (`/api/clarify-class`) stores a confirmed
+  `summary` + `clarifications` in the class config; generation may emit
+  `question` lines before the workout, and a `note` line on regenerations. The
+  JSON Lines event types live in `lib/workout-stream.ts` and `lib/types.ts`.
+- **Teacher accounts are designed, not built**: `docs/01-teacher-accounts.md`.
 - **Schema changes go in `supabase/migrations/`** and are applied with the
   Supabase MCP `apply_migration` (or the CLI). Never hand-edit the live schema again.
 - **"Today" for reports is the browser's time zone**, defaulting to America/Los_Angeles.

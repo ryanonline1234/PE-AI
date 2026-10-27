@@ -4,6 +4,18 @@ export type Intensity = "low" | "moderate" | "high";
 export type Focus = "mixed" | "cardio" | "strength" | "flexibility";
 export type FitnessLevel = "beginner" | "moderate" | "advanced";
 
+/** One question the AI asked and the answer it got (teacher check or student). */
+export interface QA {
+  question: string;
+  answer: string;
+}
+
+/** A question the AI wants answered, with tap-able answers. */
+export interface AskQuestion {
+  question: string;
+  options: string[];
+}
+
 export interface ClassConfig {
   duration: number;
   minCalories: number;
@@ -14,6 +26,16 @@ export interface ClassConfig {
   intensity: Intensity;
   focus: Focus;
   customPrompt: string;
+  /** The AI's plain-language reading of this setup, confirmed by the teacher. */
+  summary?: string;
+  /** Answers the teacher gave during the AI check. Fed to every generation. */
+  clarifications?: QA[];
+}
+
+/** Response of /api/clarify-class. */
+export interface ClassCheck {
+  summary: string;
+  questions: AskQuestion[];
 }
 
 export interface WarmupItem {
@@ -33,8 +55,9 @@ export interface ExerciseItem {
   howTo?: string[]; // may be absent on older generations
 }
 
-// NOTE: no `coachNote` — it was removed from the live output.
 export interface Workout {
+  /** On a regeneration: what the AI changed and why, shown above the workout. */
+  note?: string;
   title: string;
   totalCalories: number;
   totalDuration: number; // minutes
@@ -50,6 +73,14 @@ export interface GenerateWorkoutInput {
   limitations: string;
   preferences: string;
   regenerateFeedback: string;
+  /** Answers to the questions the AI asked before building. */
+  answers?: QA[];
+  /** Student tapped Skip on the questions: build without asking again. */
+  skipQuestions?: boolean;
+  /** Share id of the workout being regenerated, so the AI edits it. */
+  previousId?: string | null;
+  /** Teacher preview: typical student, nothing saved. */
+  sample?: boolean;
 }
 
 export interface ClassLookup {
@@ -90,11 +121,14 @@ export interface ReportResponse {
 // the browser as NDJSON. `done` carries the share id once the workout is saved.
 
 export type WorkoutEvent =
+  | { kind: "note"; text: string }
+  | { kind: "question"; question: AskQuestion }
+  | { kind: "needs_answers" }
   | { kind: "meta"; title: string; totalCalories: number; totalDuration: number }
   | { kind: "warmup"; item: WarmupItem }
   | { kind: "exercise"; item: ExerciseItem }
   | { kind: "cooldown"; item: CooldownItem }
-  | { kind: "done"; id: string }
+  | { kind: "done"; id: string | null }
   | { kind: "error"; message: string };
 
 export const EMPTY_WORKOUT: Workout = {

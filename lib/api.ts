@@ -8,6 +8,7 @@ import type {
   GenerateWorkoutInput,
   ReportResponse,
   ReviewInput,
+  ClassCheck,
   SaveClassResponse,
   WorkoutEvent,
 } from "@/lib/types";
@@ -46,6 +47,19 @@ export async function apiGetClass(code: string): Promise<ClassLookup> {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Class not found");
   return { config: data.config as ClassConfig, hasTeacherKey: Boolean(data.hasTeacherKey) };
+}
+
+// ── Teacher AI check ──────────────────────────────────────────
+
+export async function apiClarifyClass(config: ClassConfig, round: number): Promise<ClassCheck> {
+  const res = await fetch("/api/clarify-class", {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ config, round }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "The AI check failed");
+  return data as ClassCheck;
 }
 
 // ── Workout generation ────────────────────────────────────────

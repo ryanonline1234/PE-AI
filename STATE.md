@@ -3,10 +3,14 @@
 _Updated 2026-10-26. Overwrite in place at every handoff._
 
 ## Status
-Tier A + Tier B are **live in production** at pe-ai.vercel.app
-(`main` @ acf2a29, PR #3 merged 2026-10-26). Verified on production after the
-deploy: manifest + sw.js served, generation streams progressively (first item
-4 s, done 9 s), `/w/<id>` renders, bad ids 404.
+Tier A + Tier B are **live in production** at pe-ai.vercel.app (`main` @ 570f6bc).
+
+Branch `ai-check` (PR open) adds the AI conversation features: teacher AI
+check with saved answers, student questions inside generation, regeneration
+note, teacher sample preview. Verified locally end to end; awaiting Ryan's
+merge. Teacher accounts with Mitty Google sign-in are designed in
+`docs/01-teacher-accounts.md` and **not built**; they wait on Ryan's
+decisions (§7 there) and his Google Cloud + Supabase dashboard steps (§4).
 
 ## What Tier B changed
 - **Haiku 5.5, streamed.** `generate-workout` asks for JSON Lines and forwards
@@ -40,6 +44,9 @@ and sw.js served; 404 for bad ids.
 - Test data: class HMJ8TW has several smoke-test workouts and one 4-star review.
 
 ## Next action
-1. Ryan tries Go mode on his phone (wake lock, chime, share sheet, install).
-2. Tier C: review history across days, per-day generation counts (the
-   `workouts` table now makes this a query), whole-class workout mode.
+1. Ryan merges the `ai-check` PR after trying it on the preview.
+2. Ryan answers the five decisions in `docs/01-teacher-accounts.md` §7 and
+   does the dashboard steps in §4; then Claude builds teacher accounts.
+3. Ryan tries Go mode on a real phone (wake lock, chime, share sheet, install).
+4. Tier C: review history, per-day counts, whole-class mode (fold into the
+   teacher dashboard once accounts exist).

@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
 import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 import { generateTeacherKey, hashTeacherKey, teacherKeyMatches } from "@/lib/teacher-key";
+import { clampConfig } from "@/lib/class-config";
 import type { ClassConfig } from "@/lib/types";
 
 export async function POST(request: Request) {
@@ -36,19 +37,9 @@ export async function POST(request: Request) {
   ]);
   if (limited) return rateLimitedResponse(limited);
 
-  // 3. Sanitize config — only allow known keys so teachers can't inject arbitrary data
-  const safeConfig: ClassConfig = {
-    duration:     Math.min(Math.max(Number(config.duration)    || 30,  10), 120),
-    minCalories:  Math.min(Math.max(Number(config.minCalories) || 150, 50), 800),
-    intensity:    ["low", "moderate", "high"].includes(config.intensity) ? config.intensity : "moderate",
-    focus:        ["mixed", "cardio", "strength", "flexibility"].includes(config.focus) ? config.focus : "mixed",
-    // Free-text (teacher textarea) — truncated like customPrompt.
-    equipment:    typeof config.equipment === "string" ? config.equipment.slice(0, 500) : "",
-    // Truncate free-text to prevent prompt injection via the teacher field
-    customPrompt: typeof config.customPrompt === "string"
-      ? config.customPrompt.slice(0, 500)
-      : "",
-  };
+  // 3. Sanitize config — only known keys, clamped (lib/class-config.ts), so
+  //    teachers can't inject arbitrary data or widen the limits.
+  const safeConfig: ClassConfig = clampConfig(config);
 
   // 4. Teacher-key check. Three cases:
   //    - new class: generate a key, store its hash, return the key once
