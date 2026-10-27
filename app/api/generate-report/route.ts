@@ -3,8 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
 import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
-import { teacherKeyMatches } from "@/lib/teacher-key";
-import { teacherFromRequest } from "@/lib/teacher-auth";
+import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
 import { DEFAULT_TIME_ZONE, formatDateInTimeZone, isValidTimeZone, startOfTodayInTimeZone } from "@/lib/time";
 
 // LLM call — raise the function limit so Vercel doesn't time out mid-generation.
@@ -22,7 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { code, teacherKey, timeZone } = body;
+  const { code, timeZone } = body;
 
   if (!code || !/^[A-Z0-9]{6}$/.test(code)) {
     return NextResponse.json({ error: "Invalid class code" }, { status: 400 });
@@ -36,30 +35,19 @@ export async function POST(request: NextRequest) {
   ]);
   if (limited) return rateLimitedResponse(limited);
 
-  // Only the class's teacher can read its feedback: the owner account, or the key holder.
-  const { teacher } = await teacherFromRequest(request);
+  // Only the class's owner can read its feedback.
+  const { account } = await callerFromRequest(request);
+  if (!account) return signInRequired();
   const { data: cls, error: clsError } = await supabase
     .from("pe_classes")
-    .select("teacher_key_hash, owner_id")
+    .select("owner_id")
     .eq("code", code)
     .maybeSingle();
-
   if (clsError || !cls) {
     return NextResponse.json({ error: "Class not found" }, { status: 404 });
   }
-  const ownsIt = Boolean(teacher && cls.owner_id === teacher.id);
-  if (!ownsIt) {
-    if (!cls.teacher_key_hash) {
-      return NextResponse.json(
-        { error: cls.owner_id
-            ? "This class belongs to a teacher's Mitty account. Sign in to see its report."
-            : "This class has no teacher key yet. Save the class settings once to get one." },
-        { status: 403 }
-      );
-    }
-    if (!teacherKeyMatches(teacherKey, cls.teacher_key_hash)) {
-      return NextResponse.json({ error: "Wrong teacher key for this class." }, { status: 403 });
-    }
+  if (cls.owner_id !== account.id) {
+    return NextResponse.json({ error: "Only the owner of this class can see its report." }, { status: 403 });
   }
 
   // "Today" in the school's local day, not the UTC day.
@@ -89,7 +77,8 @@ export async function POST(request: NextRequest) {
   ).join(", ");
   const comments = reviews
     .filter(r => r.comment)
-    .map((r, i) => `${i + 1}. ${r.student_name ? `${r.student_name}: ` : ""}"${r.comment}"`)
+    // Names stay out of the AI request; the teacher sees them in the app.
+    .map((r, i) => `${i + 1}. "${r.comment}"`)
     .join("\n");
 
   const prompt = `You are a PE teacher assistant summarizing student workout feedback for a teacher.

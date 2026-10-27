@@ -3,6 +3,18 @@ import type { ClassConfig, QA } from "@/lib/types";
 
 export const MAX_CLARIFICATIONS = 6;
 
+/** New-class defaults. Plain module (not "use client") so server pages can spread it. */
+export const DEFAULT_CONFIG: ClassConfig = {
+  duration: 30,
+  minCalories: 150,
+  equipment: "",
+  intensity: "moderate",
+  focus: "mixed",
+  customPrompt: "",
+  summary: "",
+  clarifications: [],
+};
+
 function cleanQA(list: unknown, max: number): QA[] {
   if (!Array.isArray(list)) return [];
   return list

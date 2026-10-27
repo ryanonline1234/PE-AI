@@ -68,7 +68,6 @@ export interface Workout {
 
 export interface GenerateWorkoutInput {
   code: string;
-  studentName: string;
   fitnessLevel: FitnessLevel;
   limitations: string;
   preferences: string;
@@ -79,30 +78,21 @@ export interface GenerateWorkoutInput {
   skipQuestions?: boolean;
   /** Share id of the workout being regenerated, so the AI edits it. */
   previousId?: string | null;
-  /** Teacher preview: typical student, nothing saved. */
+  /** Owner preview: a typical student; saved to the owner's workouts. */
   sample?: boolean;
-}
-
-export interface ClassLookup {
-  config: ClassConfig;
-  /** True once the class has a teacher key; the teacher UI then asks for it before saving. */
-  hasTeacherKey: boolean;
-  /** True when a signed-in teacher account owns the class. */
-  managed: boolean;
 }
 
 export interface SaveClassResponse {
   success: boolean;
   code: string;
-  /** Present only when this save created the class or claimed a legacy one. Shown once. */
-  teacherKey?: string;
 }
 
 export interface ReviewInput {
   code: string;
-  studentName: string;
   rating: number;
   comment: string;
+  /** The rated workout, when it was saved. */
+  workoutId?: string | null;
 }
 
 export interface ReportMeta {

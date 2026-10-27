@@ -5,10 +5,10 @@ import { Layout } from "@/components/ui";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
 import { safeNextPath } from "@/lib/school";
 
-export const metadata: Metadata = { title: "Teacher sign in — PE.AI" };
+export const metadata: Metadata = { title: "Sign in — PE.AI" };
 
 const ERRORS: Record<string, string> = {
-  domain: "PE.AI sign-in is for Mitty school Google accounts only. Try again with your @mitty.com account.",
+  domain: "PE.AI is for Mitty school Google accounts only. Try again with your @mittymonarch.com or @mitty.com account.",
   auth: "Sign-in didn't finish. Please try again.",
 };
 
@@ -17,30 +17,25 @@ type Search = Promise<{ error?: string; next?: string }>;
 export default async function LoginPage({ searchParams }: { searchParams: Search }) {
   const { error, next } = await searchParams;
   const account = await getAccount();
-  if (isTeacherAccount(account)) redirect(safeNextPath(next));
+  const home = isTeacherAccount(account) ? "/teacher" : "/me";
+  if (account) redirect(safeNextPath(next, home));
 
-  const href = `/auth/signin?next=${encodeURIComponent(safeNextPath(next))}`;
+  // After Google, land where the visitor was going, else their home ("/" routes by role).
+  const href = `/auth/signin?next=${encodeURIComponent(safeNextPath(next, "/"))}`;
   return (
     <Layout backHref="/" backLabel="← Home">
       <div className="max-w-[460px]">
         <div className="font-display text-[42px] font-black uppercase tracking-[-1px] leading-none mb-3">
-          Teacher Sign In
+          Sign In
         </div>
         <p className="text-muted text-[15px] leading-[1.6] mb-8">
-          Sign in with your Mitty Google account to keep all your classes in one place, see every workout your
-          students generate, and file the ones you like under each class.
+          Use your Mitty Google account. Students (@mittymonarch.com) get workouts and keep a history of every one.
+          Teachers (@mitty.com) run classes and see how their students are doing.
         </p>
 
         {error && ERRORS[error] && (
           <div className="rounded-lg border px-4 py-[13px] text-[14px] mb-5 bg-[rgba(255,77,109,0.08)] border-[rgba(255,77,109,0.3)] text-danger">
             {ERRORS[error]}
-          </div>
-        )}
-
-        {account && !isTeacherAccount(account) && (
-          <div className="rounded-lg border border-border bg-surface px-4 py-[13px] text-[14px] leading-[1.5] mb-5">
-            You&apos;re signed in as <strong>{account.email}</strong>. Teacher accounts are for Mitty faculty
-            (@mitty.com). Students don&apos;t need an account: just use your class code.
           </div>
         )}
 
@@ -54,16 +49,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           Sign in with Google
         </a>
 
-        {account && (
-          <form action="/auth/signout" method="post" className="mt-3">
-            <button type="submit" className="w-full bg-surface2 text-text border border-border rounded-lg px-6 py-3 font-body text-[15px] font-medium cursor-pointer">
-              Sign out
-            </button>
-          </form>
-        )}
-
         <p className="text-muted text-[13px] leading-[1.6] mt-6">
-          Students: no sign-in needed. <Link href="/" className="text-accent">Enter your class code</Link> instead.
+          By signing in you agree to the <Link href="/terms" className="text-accent">terms</Link>. What we keep is in
+          the <Link href="/privacy" className="text-accent">privacy policy</Link>.
         </p>
       </div>
     </Layout>

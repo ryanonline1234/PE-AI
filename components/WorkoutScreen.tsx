@@ -57,7 +57,7 @@ export function WorkoutScreen({
     if (!reviewRating) return;
     setReviewLoading(true); setReviewError("");
     try {
-      await apiSubmitReview({ code, studentName, rating: reviewRating, comment: reviewComment });
+      await apiSubmitReview({ code, rating: reviewRating, comment: reviewComment, workoutId: shareId });
       setReviewSubmitted(true);
     } catch (e) {
       setReviewError(e instanceof Error ? e.message : String(e));

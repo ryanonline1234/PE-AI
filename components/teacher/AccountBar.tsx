@@ -18,16 +18,3 @@ export function AccountBar({ account }: { account: Account }) {
     </div>
   );
 }
-
-export function NotATeacher({ account }: { account: Account }) {
-  return (
-    <>
-      <AccountBar account={account} />
-      <div className="font-display text-[36px] font-black uppercase tracking-[-1px] leading-none mb-3">Teachers only</div>
-      <p className="text-muted text-[15px] leading-[1.6] max-w-[480px]">
-        Teacher accounts are for Mitty faculty (@mitty.com). Students don&apos;t need an account: go back to the home
-        page and enter your class code.
-      </p>
-    </>
-  );
-}

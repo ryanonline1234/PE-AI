@@ -6,7 +6,8 @@ import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rat
 import { applyEvent, drainLines, parseModelLine, reconcileTotals } from "@/lib/workout-stream";
 import { newWorkoutId, WORKOUT_ID_RE } from "@/lib/workout-id";
 import { classParamsBlock, cleanAnswers, teacherNotesBlock } from "@/lib/class-config";
-import { teacherFromRequest } from "@/lib/teacher-auth";
+import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
+import { canUseClass, ensureMember, getClassByCode } from "@/lib/class-access";
 import { EMPTY_WORKOUT, type AskQuestion, type ClassConfig, type Workout, type WorkoutEvent } from "@/lib/types";
 
 // Generation streams for 5-15 s; keep headroom so Vercel never cuts it off.
@@ -40,6 +41,9 @@ export async function POST(request: NextRequest) {
   if (!verifySecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  // Everyone signs in (DECISIONS 2026-10-27); the workout belongs to the account.
+  const { account } = await callerFromRequest(request);
+  if (!account) return signInRequired();
 
   // 2. Parse body
   let body;
@@ -49,7 +53,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { code, studentName, fitnessLevel, limitations, preferences, regenerateFeedback, previousId } = body;
+  const { code, fitnessLevel, limitations, preferences, regenerateFeedback, previousId } = body;
   const sample = body.sample === true;
   const answers = cleanAnswers(body.answers);
 
@@ -59,40 +63,33 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServerClient();
 
-  // 2b. Rate limits. Every generation costs real money, and the x-internal-secret
-  //     gate is only obscurity (it ships in the browser bundle), so this is the
-  //     real cap on abuse. Per-IP stays generous: a whole school shares one NAT IP.
+  // 2b. Rate limits. Every generation costs real money. Per account is the
+  //     tight one now that everyone signs in; per-IP stays generous because a
+  //     whole school shares one NAT IP.
   const limited = await checkRateLimit(supabase, [
+    { name: `gen:user:${account.id}`,      windowSeconds: WINDOW.hour,       limit: 40   },
     { name: `gen:code:${code}`,            windowSeconds: WINDOW.hour,       limit: 150  },
     { name: `gen:ip:${clientIp(request)}`, windowSeconds: WINDOW.tenMinutes, limit: 100  },
     { name: "gen:global",                  windowSeconds: WINDOW.day,        limit: 1500 },
   ]);
   if (limited) return rateLimitedResponse(limited);
 
-  // 3. Fetch class config from Supabase (students can't tamper with these values)
-  const { data, error: dbError } = await supabase
-    .from("pe_classes")
-    .select("config, owner_id")
-    .eq("code", code)
-    .single();
-
-  if (dbError || !data) {
+  // 3. Fetch class config (students can't tamper with these values). Personal
+  //    classes are only usable by their owner; samples only by the owner.
+  const cls = await getClassByCode(code);
+  if (!cls || !canUseClass(cls, account.id)) {
     return NextResponse.json({ error: "Class not found" }, { status: 404 });
   }
-
-  const cfg = data.config as ClassConfig;
-
-  // A signed-in teacher previewing their own class: keep the sample in their library.
-  let sampleOwner: string | null = null;
-  if (sample && data.owner_id) {
-    const { teacher } = await teacherFromRequest(request);
-    if (teacher && teacher.id === data.owner_id) sampleOwner = teacher.id;
+  if (sample && cls.owner_id !== account.id) {
+    return NextResponse.json({ error: "Only the class owner can preview samples." }, { status: 403 });
   }
+  const cfg = cls.config as ClassConfig;
+  await ensureMember(cls, account.id);
 
   // 4. Validate student-supplied fields
   const validLevels = ["beginner", "moderate", "advanced"];
   const level = validLevels.includes(fitnessLevel) ? fitnessLevel : "moderate";
-  const name     = sanitizeStudentInput(studentName       || "");
+  const name     = account.name.slice(0, 60);
   const notes    = sanitizeStudentInput(limitations       || "None reported");
   const prefs    = sanitizeStudentInput(preferences       || "");
   const feedback = sanitizeStudentInput(regenerateFeedback || "");
@@ -167,7 +164,7 @@ ${askStep}${noteStep}Workout lines, in this order:
 
   const userMessage = sample
     ? `This is the teacher previewing the class. Write the workout for a typical student: moderate fitness, no injuries, no preferences.`
-    : `Student name: ${name || "Anonymous"}
+    : `Student: a high school student (name withheld)
 Fitness level: ${level}
 Injuries or physical limitations: ${notes}
 ${prefs    ? `Personal preferences: ${prefs}`            : ""}
@@ -256,19 +253,12 @@ Please generate my workout.`;
         workout = reconcileTotals(workout);
         if (!workout.title) workout = { ...workout, title: "Your Workout" };
 
-        // Anonymous teacher previews are never saved; a signed-in owner's are,
-        // marked as theirs, so they show up under "My workouts".
-        if (sample && !sampleOwner) {
-          send({ kind: "done", id: null });
-          return;
-        }
-
+        // Every workout belongs to the account that generated it. An owner's
+        // sample previews carry no student name.
         const id = newWorkoutId();
         const { error: insertError } = await supabase
           .from("workouts")
-          .insert(sampleOwner
-            ? { id, class_code: code, student_name: null, workout, created_by: sampleOwner }
-            : { id, class_code: code, student_name: name || null, workout });
+          .insert({ id, class_code: code, student_name: sample ? null : name, workout, created_by: account.id });
         if (insertError) {
           // The student still has the workout on screen; only the share link is lost.
           console.error("workouts insert failed:", insertError);

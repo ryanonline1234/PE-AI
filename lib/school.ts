@@ -12,8 +12,19 @@ export function isSchoolEmail(email: string | null | undefined): boolean {
   return (SCHOOL_DOMAINS as readonly string[]).includes(emailDomain(email));
 }
 
-/** Only same-origin absolute paths; anything else falls back. Prevents open redirects. */
-export function safeNextPath(raw: string | null | undefined, fallback = "/teacher"): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) return fallback;
-  return raw;
+/**
+ * Only same-origin paths; anything else falls back. Prevents open redirects.
+ * Parsing (not string checks) is the gate: URL parsers strip tabs/newlines, so
+ * "/\t/evil.com" would otherwise become "//evil.com".
+ */
+export function safeNextPath(raw: unknown, fallback = "/"): string {
+  if (typeof raw !== "string" || !raw.startsWith("/") || /[\x00-\x1f\\]/.test(raw)) return fallback;
+  try {
+    const base = "http://same.origin";
+    const url = new URL(raw, base);
+    if (url.origin !== base) return fallback;
+    return url.pathname + url.search;
+  } catch {
+    return fallback;
+  }
 }

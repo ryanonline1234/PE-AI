@@ -1,5 +1,6 @@
-// Read helpers for the signed-in teacher pages. Every query runs through the
-// user-scoped client, so RLS limits it to the teacher's own classes.
+// Read helpers for the signed-in pages. Every query runs through the user-scoped
+// client, so RLS limits it to what the caller may see: classes they own or
+// joined, their own workouts, and (for owners) their class's workouts and roster.
 import { createUserClient } from "@/lib/supabase-auth";
 import { DEFAULT_TIME_ZONE } from "@/lib/time";
 import type { ClassConfig } from "@/lib/types";
@@ -13,6 +14,8 @@ export interface ClassRow {
   config: ClassConfig;
   archived: boolean;
   updated_at: string;
+  owner_id: string | null;
+  kind: "class" | "personal";
 }
 
 export interface WorkoutRow {
@@ -46,7 +49,7 @@ export async function loadClasses(): Promise<ClassRow[]> {
   const supabase = await createUserClient();
   const { data } = await supabase
     .from("pe_classes")
-    .select("id, code, label, config, archived, updated_at")
+    .select("id, code, label, config, archived, updated_at, owner_id, kind")
     .order("updated_at", { ascending: false });
   return (data ?? []) as ClassRow[];
 }
@@ -55,7 +58,7 @@ export async function loadClass(code: string): Promise<ClassRow | null> {
   const supabase = await createUserClient();
   const { data } = await supabase
     .from("pe_classes")
-    .select("id, code, label, config, archived, updated_at")
+    .select("id, code, label, config, archived, updated_at, owner_id, kind")
     .eq("code", code)
     .maybeSingle();
   return (data as ClassRow | null) ?? null;
@@ -117,4 +120,45 @@ export async function loadWorkoutsByIds(ids: string[]): Promise<WorkoutRow[]> {
   const supabase = await createUserClient();
   const { data } = await supabase.from("workouts").select(WORKOUT_COLS).in("id", ids);
   return (data ?? []) as unknown as WorkoutRow[];
+}
+
+/** Ids of the classes the caller has joined as a student. */
+export async function loadMemberClassIds(): Promise<Set<string>> {
+  const supabase = await createUserClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const me = claims?.claims?.sub;
+  if (!me) return new Set();
+  const { data } = await supabase.from("class_members").select("class_id").eq("user_id", me);
+  return new Set((data ?? []).map((r) => r.class_id as string));
+}
+
+export interface RosterRow {
+  user_id: string;
+  joined_at: string;
+  name: string;
+  email: string;
+}
+
+/** Students who joined one of the caller's classes (RLS: owner only). */
+export async function loadRoster(classId: string): Promise<RosterRow[]> {
+  const supabase = await createUserClient();
+  const { data: members } = await supabase
+    .from("class_members")
+    .select("user_id, joined_at")
+    .eq("class_id", classId)
+    .order("joined_at", { ascending: true });
+  const ids = (members ?? []).map((m) => m.user_id as string);
+  if (ids.length === 0) return [];
+  const { data: profiles } = await supabase.from("profiles").select("id, email, display_name").in("id", ids);
+  const byId = new Map((profiles ?? []).map((p) => [p.id as string, p]));
+  return (members ?? []).map((m) => {
+    const p = byId.get(m.user_id as string);
+    const email = (p?.email as string | undefined) ?? "";
+    return {
+      user_id: m.user_id as string,
+      joined_at: m.joined_at as string,
+      email,
+      name: (p?.display_name as string | undefined) || email.split("@")[0] || "Student",
+    };
+  });
 }

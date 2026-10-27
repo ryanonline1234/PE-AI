@@ -142,3 +142,41 @@ with a self-rolling-back SQL test (teacher A sees only A's class + A's own
 samples; students and anon see nothing). Writes stay in API routes with the
 service role after an ownership check. Signed-in teachers' sample previews are
 saved with `created_by` and appear under "My workouts".
+
+## 2026-10-27 — Mandatory sign-in, no teacher keys, personal classes
+Ryan's call, after hearing the trade-offs (gym-floor friction, minors' data tied
+to identity, possible school privacy rules — recommendation was to check with
+the PE teacher and Mitty's tech office): everyone signs in.
+- **Students sign in** with @mittymonarch.com. Opening `/c/CODE` records a
+  `class_members` row, so teachers get a roster with names, emails and
+  per-student workout counts. Workouts carry `created_by` for everyone.
+- **Teacher keys are gone.** A class belongs only to its owner account. The
+  `teacher_key_hash` column stays (additive migrations only) but authenticated
+  users can't select it (column-level GRANT). Classes made before accounts have
+  no owner; the admin assigns them from /teacher (`/api/admin/assign-class`),
+  which replaces "claim with code + key".
+- **Personal classes**: students create up to 3 `kind = 'personal'` classes;
+  only the owner can open, generate in, or rate them. Same editor as teachers
+  (AI check wording switches to the student), minus sample preview and report.
+- **Names never go to the AI.** With real Google names stored, the workout
+  prompt says "name withheld" and the teacher report sends comments without
+  names. The privacy page says exactly this.
+- RLS: helper functions live in a `private` schema (SECURITY DEFINER, not
+  exposed by the API) so pe_classes / class_members / profiles policies can
+  reference each other without recursion. Verified with a rolled-back test:
+  teacher sees own class + members + their workouts; student sees own + joined
+  classes and only their own workouts; a non-member sees nothing; the key hash
+  column is permission-denied.
+- Routes: `/` routes by role (teacher → /teacher, student → /me); old
+  `/?code=X` links → `/c/X`; `/teacher/[code]` → `/classes/[code]`.
+- An independent review pass before merge found no authorization hole and nine
+  defects, all fixed: an open redirect via tab/newline in `next` (now parsed
+  with `new URL` and same-origin checked), admin-assign could take owned or
+  personal classes (now unowned teacher classes only), API routes dropped
+  refreshed sessions (proxy now covers /api), personal-class workouts were
+  viewable by link (now owner-only), a failed profile read demoted teachers
+  (falls back to the domain rule), DEFAULT_CONFIG imported from a client module
+  into a server page, the personal-class cap was bypassable via restore, the
+  service worker cached signed-in pages (now public pages only, and sign-out
+  sends `Clear-Site-Data: "cache"`, scope "local"), and review→workout links
+  weren't checked against the class.

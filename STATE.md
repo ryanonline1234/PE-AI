@@ -3,21 +3,24 @@
 _Updated 2026-10-26. Overwrite in place at every handoff._
 
 ## Status
-Live in production: Tier A, Tier B, AI-conversation features, privacy/terms.
-Branch `teacher-accounts` (PR open, shipping to production on Ryan's request):
-Mitty Google sign-in for teachers, /teacher dashboard (classes with labels and
-stats, claim an existing class, My workouts with filing), /teacher/[code]
-class pages (settings editor, filed workouts, student workouts by day,
-ratings, archive). Classic code + teacher key flow on "/" unchanged.
+Live in production (`main` @ 971653a): Tiers A+B, AI-conversation features,
+privacy/terms, teacher accounts with Mitty Google sign-in. Ryan's account
+(ryantseng29@mittymonarch.com) is `admin`; production sign-in verified by his
+real sign-in on 2026-10-27.
 
-Verified: tsc/lint/build; RLS with a rolled-back SQL test; signed-out
-redirects, the Google hand-off (hd=*, PKCE cookie, correct callback), open-
-redirect guard, callback errors, 401s on account APIs, classic flow end to end
-in the browser. NOT verified: anything signed in (needs a real Google sign-in).
+Branch `mandatory-login` (PR open, awaiting Ryan's preview test + merge):
+everyone signs in; teacher keys removed (admin assigns old classes from
+/teacher); students get /me (join with a code, personal classes, history);
+/c/CODE is the workout page; /classes/CODE is the owner page (roster for
+teachers, settings + history for personal classes); names never reach the AI.
+
+Verified on the branch: tsc/lint/build; RLS with a rolled-back SQL test
+(teacher / member / non-member / key-hash column); every signed-out page and
+API path. NOT verified by Claude: any signed-in screen (needs a real Google
+sign-in), which is why the PR waits on Ryan's preview test.
 
 The UI revamp is parked on branch `ui-revamp` (classic UI frozen as tag
-`ui-classic-v1` + branch `ui-classic`, reference shots in docs/ui-classic)
-until Ryan gives the green light.
+`ui-classic-v1` + branch `ui-classic`) until Ryan's green light.
 
 ## What Tier B changed
 - **Haiku 5.5, streamed.** `generate-workout` asks for JSON Lines and forwards
@@ -51,10 +54,11 @@ and sw.js served; 404 for bad ids.
 - Test data: class HMJ8TW has several smoke-test workouts and one 4-star review.
 
 ## Next action
-1. Ryan signs in at pe-ai.vercel.app/login with his Mitty account; Claude sets
-   his profile to `admin` (`update profiles set role='admin' where email=…`).
-2. Ryan creates a class, previews a sample, files it; checks /teacher.
-3. Then flip rec 2: new classes require sign-in (save-class) once real
-   sign-ins work; tell the PE teacher to sign in and claim their class.
+1. Ryan tests the `mandatory-login` preview signed in (student home, personal
+   class, join a class, teacher dashboard, roster, admin assign) and merges.
+2. After merge: assign the pre-account classes to real teachers (admin box on
+   /teacher); the PE teacher signs in once first.
+3. Ask the PE teacher / Mitty tech office whether student sign-in needs a
+   school data agreement (open recommendation from 2026-10-27).
 4. UI revamp resumes only on Ryan's green light (branch `ui-revamp`).
 5. Real-phone check of Go mode and the question flow.

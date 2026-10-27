@@ -4,6 +4,7 @@
 import { createServerClient as createSSRClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
+import { emailDomain, FACULTY_DOMAIN } from "@/lib/school";
 
 const URL = () => process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const KEY = () => process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
@@ -82,6 +83,8 @@ export async function getAccount(supabase?: AuthClient): Promise<Account | null>
     id: sub,
     email,
     name: profile?.display_name || email.split("@")[0] || "Teacher",
-    role: ((profile?.role as Role | undefined) ?? "student"),
+    // If the profile can't be read, fall back to the same domain rule the
+    // database uses, so a teacher is never quietly treated as a student.
+    role: (profile?.role as Role | undefined) ?? (emailDomain(email) === FACULTY_DOMAIN ? "teacher" : "student"),
   };
 }
