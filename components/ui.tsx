@@ -85,6 +85,11 @@ export function Layout({ onBack, backHref, backLabel = "← Back", children }: {
       <div className="w-full max-w-[740px]">
         {children}
       </div>
+
+      <footer className="no-print w-full max-w-[740px] mt-14 pt-5 border-t border-border flex gap-5 text-[13px] text-muted">
+        <Link href="/privacy" className="text-muted no-underline hover:text-text">Privacy</Link>
+        <Link href="/terms" className="text-muted no-underline hover:text-text">Terms</Link>
+      </footer>
     </div>
   );
 }
