@@ -1,7 +1,8 @@
 # 01 — Teacher accounts with Mitty Google sign-in (design, not built)
 
-_Status: proposed 2026-10-26, awaiting Ryan's decisions (§7) and his
-dashboard steps (§4). Nothing here is implemented yet._
+_Status: BUILT 2026-10-26 with every §7 recommendation (see DECISIONS.md).
+Ryan's §4 dashboard steps are done. The classic anonymous key flow still runs
+alongside, on purpose, until real sign-ins are confirmed._
 
 ## 1. Goal
 

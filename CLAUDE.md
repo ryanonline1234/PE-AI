@@ -34,7 +34,12 @@ writes to the production database — that's fine for test classes, don't bulk-e
   `summary` + `clarifications` in the class config; generation may emit
   `question` lines before the workout, and a `note` line on regenerations. The
   JSON Lines event types live in `lib/workout-stream.ts` and `lib/types.ts`.
-- **Teacher accounts are designed, not built**: `docs/01-teacher-accounts.md`.
+- **Teacher accounts** (`docs/01-teacher-accounts.md`): Mitty Google sign-in via
+  Supabase Auth. `lib/supabase-auth.ts` (user-scoped clients, `getAccount`),
+  `lib/teacher-auth.ts` (who's calling an API route), `proxy.ts` (session refresh
+  for /teacher + /login only). Teacher pages READ through RLS; writes go through
+  API routes after an ownership check. A class is controlled by its owner account
+  OR its teacher key. The classic anonymous key flow on "/" still works.
 - **Schema changes go in `supabase/migrations/`** and are applied with the
   Supabase MCP `apply_migration` (or the CLI). Never hand-edit the live schema again.
 - **"Today" for reports is the browser's time zone**, defaulting to America/Los_Angeles.
@@ -42,7 +47,7 @@ writes to the production database — that's fine for test classes, don't bulk-e
 ## Don'ts
 - Don't push to `main` without Ryan's OK (it deploys). Work on a branch; Vercel
   builds a preview per push.
-- Don't add `next/image`, auth, or student accounts without a decision in `DECISIONS.md`
+- Don't add `next/image` or student accounts without a decision in `DECISIONS.md`
   (minors' data; the FitTrack merge plan in `~/Archive/peai-unified` is parked).
 - Don't revert to Haiku 4.5 / the dated id / DeepSeek, or to one-document JSON
   output; see DECISIONS (streaming depends on the JSON Lines format).

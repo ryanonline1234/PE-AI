@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
@@ -6,6 +6,7 @@ import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rat
 import { applyEvent, drainLines, parseModelLine, reconcileTotals } from "@/lib/workout-stream";
 import { newWorkoutId, WORKOUT_ID_RE } from "@/lib/workout-id";
 import { classParamsBlock, cleanAnswers, teacherNotesBlock } from "@/lib/class-config";
+import { teacherFromRequest } from "@/lib/teacher-auth";
 import { EMPTY_WORKOUT, type AskQuestion, type ClassConfig, type Workout, type WorkoutEvent } from "@/lib/types";
 
 // Generation streams for 5-15 s; keep headroom so Vercel never cuts it off.
@@ -34,7 +35,7 @@ function sanitizeStudentInput(str: string = ""): string {
     .trim();
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   // 1. Auth check
   if (!verifySecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
   // 3. Fetch class config from Supabase (students can't tamper with these values)
   const { data, error: dbError } = await supabase
     .from("pe_classes")
-    .select("config")
+    .select("config, owner_id")
     .eq("code", code)
     .single();
 
@@ -80,6 +81,13 @@ export async function POST(request: Request) {
   }
 
   const cfg = data.config as ClassConfig;
+
+  // A signed-in teacher previewing their own class: keep the sample in their library.
+  let sampleOwner: string | null = null;
+  if (sample && data.owner_id) {
+    const { teacher } = await teacherFromRequest(request);
+    if (teacher && teacher.id === data.owner_id) sampleOwner = teacher.id;
+  }
 
   // 4. Validate student-supplied fields
   const validLevels = ["beginner", "moderate", "advanced"];
@@ -248,8 +256,9 @@ Please generate my workout.`;
         workout = reconcileTotals(workout);
         if (!workout.title) workout = { ...workout, title: "Your Workout" };
 
-        // Teacher previews are never saved.
-        if (sample) {
+        // Anonymous teacher previews are never saved; a signed-in owner's are,
+        // marked as theirs, so they show up under "My workouts".
+        if (sample && !sampleOwner) {
           send({ kind: "done", id: null });
           return;
         }
@@ -257,7 +266,9 @@ Please generate my workout.`;
         const id = newWorkoutId();
         const { error: insertError } = await supabase
           .from("workouts")
-          .insert({ id, class_code: code, student_name: name || null, workout });
+          .insert(sampleOwner
+            ? { id, class_code: code, student_name: null, workout, created_by: sampleOwner }
+            : { id, class_code: code, student_name: name || null, workout });
         if (insertError) {
           // The student still has the workout on screen; only the share link is lost.
           console.error("workouts insert failed:", insertError);

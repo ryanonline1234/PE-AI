@@ -1,15 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@/lib/supabase";
 import { verifySecret } from "@/lib/auth";
 import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 import { teacherKeyMatches } from "@/lib/teacher-key";
+import { teacherFromRequest } from "@/lib/teacher-auth";
 import { DEFAULT_TIME_ZONE, formatDateInTimeZone, isValidTimeZone, startOfTodayInTimeZone } from "@/lib/time";
 
 // LLM call — raise the function limit so Vercel doesn't time out mid-generation.
 export const maxDuration = 60;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   if (!verifySecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -35,24 +36,30 @@ export async function POST(request: Request) {
   ]);
   if (limited) return rateLimitedResponse(limited);
 
-  // Only the teacher (key holder) can read the class's feedback.
+  // Only the class's teacher can read its feedback: the owner account, or the key holder.
+  const { teacher } = await teacherFromRequest(request);
   const { data: cls, error: clsError } = await supabase
     .from("pe_classes")
-    .select("teacher_key_hash")
+    .select("teacher_key_hash, owner_id")
     .eq("code", code)
     .maybeSingle();
 
   if (clsError || !cls) {
     return NextResponse.json({ error: "Class not found" }, { status: 404 });
   }
-  if (!cls.teacher_key_hash) {
-    return NextResponse.json(
-      { error: "This class has no teacher key yet. Save the class settings once to get one." },
-      { status: 403 }
-    );
-  }
-  if (!teacherKeyMatches(teacherKey, cls.teacher_key_hash)) {
-    return NextResponse.json({ error: "Wrong teacher key for this class." }, { status: 403 });
+  const ownsIt = Boolean(teacher && cls.owner_id === teacher.id);
+  if (!ownsIt) {
+    if (!cls.teacher_key_hash) {
+      return NextResponse.json(
+        { error: cls.owner_id
+            ? "This class belongs to a teacher's Mitty account. Sign in to see its report."
+            : "This class has no teacher key yet. Save the class settings once to get one." },
+        { status: 403 }
+      );
+    }
+    if (!teacherKeyMatches(teacherKey, cls.teacher_key_hash)) {
+      return NextResponse.json({ error: "Wrong teacher key for this class." }, { status: 403 });
+    }
   }
 
   // "Today" in the school's local day, not the UTC day.
