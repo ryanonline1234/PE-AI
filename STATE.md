@@ -3,21 +3,17 @@
 _Updated 2026-10-26. Overwrite in place at every handoff._
 
 ## Status
-Live in production (`main` @ 971653a): Tiers A+B, AI-conversation features,
-privacy/terms, teacher accounts with Mitty Google sign-in. Ryan's account
-(ryantseng29@mittymonarch.com) is `admin`; production sign-in verified by his
-real sign-in on 2026-10-27.
+Live in production (`main` @ e8aa715, PR #7 merged 2026-10-27): mandatory Mitty
+Google sign-in for everyone, no teacher keys, student /me home with up to 3
+personal classes, /c/CODE workout page (records class membership), /classes/CODE
+owner page with roster, admin assignment of pre-account classes, name-free AI
+prompts. Ryan (ryantseng29@mittymonarch.com) is `admin`.
 
-Branch `mandatory-login` (PR open, awaiting Ryan's preview test + merge):
-everyone signs in; teacher keys removed (admin assigns old classes from
-/teacher); students get /me (join with a code, personal classes, history);
-/c/CODE is the workout page; /classes/CODE is the owner page (roster for
-teachers, settings + history for personal classes); names never reach the AI.
-
-Verified on the branch: tsc/lint/build; RLS with a rolled-back SQL test
-(teacher / member / non-member / key-hash column); every signed-out page and
-API path. NOT verified by Claude: any signed-in screen (needs a real Google
-sign-in), which is why the PR waits on Ryan's preview test.
+Verified in production signed out: every page redirects to /login with the
+right `next`, old /?code= and /teacher/CODE links forward, API routes 401,
+the open-redirect fix holds, sw.js v2 (public pages only). RLS verified with a
+rolled-back SQL test. NOT verified by Claude: signed-in screens; Ryan is
+testing them in production now.
 
 The UI revamp is parked on branch `ui-revamp` (classic UI frozen as tag
 `ui-classic-v1` + branch `ui-classic`) until Ryan's green light.
@@ -54,9 +50,9 @@ and sw.js served; 404 for bad ids.
 - Test data: class HMJ8TW has several smoke-test workouts and one 4-star review.
 
 ## Next action
-1. Ryan tests the `mandatory-login` preview signed in (student home, personal
-   class, join a class, teacher dashboard, roster, admin assign) and merges.
-2. After merge: assign the pre-account classes to real teachers (admin box on
+1. Ryan tests production signed in (student home, personal class, join a
+   class, teacher dashboard, roster, admin assign); fix anything he finds.
+2. Assign the pre-account classes to real teachers (admin box on
    /teacher); the PE teacher signs in once first.
 3. Ask the PE teacher / Mitty tech office whether student sign-in needs a
    school data agreement (open recommendation from 2026-10-27).
