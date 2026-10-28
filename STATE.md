@@ -37,14 +37,16 @@ student header). Claude can't sign in; Ryan's eyes on production cover it.
 checks passed, new APIs 401, privacy page updated): sport consult → brief,
 trusted-site research with pinnable findings, students' "My sport" briefs.
 
-**Open: PR #12 (`teacher-workout`)**, DECISIONS 2026-10-28: teachers make
-their own workout at /teacher/workout (settings filled in on the same form,
-with a note that students never see them; stored in the teacher's one personal
-class), and equipment is preset chips + Other, moved second (Duration,
-Equipment, Intensity, Focus, Custom instructions). Verified by Claude:
-tsc/lint/build, own-workout route harness 11/11, sessions suite re-run,
-every stored equipment string round-trips without loss, both forms at 375px on
-a deleted local fixture page. NOT verified: the signed-in pages (Ryan).
+**Teachers' own workouts + equipment chips are live** (PR #12 merged
+2026-10-28, prod @ ac7c939), DECISIONS 2026-10-28: /teacher/workout (settings
+filled in on the same form, with a note that students never see them; stored
+in the teacher's one personal class "Just me") and equipment as preset chips +
+Other, moved second. Verified by Claude: tsc/lint/build, own-workout route
+harness 11/11, sessions 34/34, every stored equipment string round-trips, both
+forms at 375px, and signed out in production (/teacher/workout → /login with
+the right `next`). NOT yet exercised by a real sign-in: after Ryan's preview
+test no teacher "Just me" space existed, so no own workout had been generated
+through the real page.
 
 The UI revamp is parked on branch `ui-revamp` (classic UI frozen as tag
 `ui-classic-v1` + branch `ui-classic`) until Ryan's green light.
@@ -80,8 +82,8 @@ and sw.js served; 404 for bad ids.
 - Keep-alive cron first run (12:00 UTC 2026-10-27).
 
 ## Next action
-1. Ryan tests PR #12 on its preview (teacher: ⚡ Make a workout for myself;
-   any class's settings: equipment chips), then merges on his OK.
+1. Ryan makes one own workout in production (/teacher → ⚡ Make a workout for
+   myself); Claude confirms a "Just me" space and its workout exist.
 2. Ask the PE teacher / Mitty tech office whether student sign-in needs a
    school data agreement (open since 2026-10-27; stored sport briefs make it
    more pressing).
