@@ -3,19 +3,22 @@
 _Updated 2026-10-28. Overwrite in place at every handoff._
 
 ## Status
-Live in production (`main` @ f11434c, PR #8 merged 2026-10-28; PR #7 2026-10-27): mandatory Mitty
-Google sign-in for everyone, no teacher keys, student /me home with up to 3
-personal classes, /c/CODE workout page (records class membership), /classes/CODE
-owner page with roster, name-free AI prompts. Ryan's Mitty student account is
-`admin`. The 20 pre-account (unowned) classes were deleted 2026-10-27 after a
-local backup (see DECISIONS); every class now has an owner, and the
-admin-assign box and route are gone (PR #8; the old route 404s in production).
+Live in production (`main` @ 4c0f9e7, PR #9 merged 2026-10-28; PR #8 and #7
+before it): mandatory Mitty Google sign-in for everyone, no teacher keys,
+student /me home with up to 3 personal classes, /c/CODE workout page (records
+class membership), /classes/CODE owner page with roster, name-free AI prompts.
+Ryan's Mitty student account is `admin`. Every class has an owner.
 
-Verified in production signed out: every page redirects to /login with the
-right `next`, old /?code= and /teacher/CODE links forward, API routes 401,
-the open-redirect fix holds, sw.js v2 (public pages only). RLS verified with a
-rolled-back SQL test. NOT verified by Claude: signed-in screens; Ryan is
-testing them in production now.
+**Open: PR #10 (`sessions`), dated sessions + a calorie estimate**
+(`docs/02-sessions.md`, DECISIONS 2026-10-28). Teacher classes get one session
+per school date with its own settings; students get today's session or the
+class defaults. The min-calorie target is gone; the AI estimates, and old
+summaries lose their calorie-target sentences. Migration
+`20261028000008_class_sessions` is already applied to production (additive;
+`main` ignores it). Verified by Claude: tsc/lint/build, date assertions, the
+calorie filter, four real Haiku 5.5 generations on the new prompt builder,
+schema constraints and RLS read from the catalog. NOT verified: signed-in
+screens (Ryan, on the PR's Vercel preview).
 
 The UI revamp is parked on branch `ui-revamp` (classic UI frozen as tag
 `ui-classic-v1` + branch `ui-classic`) until Ryan's green light.
@@ -51,9 +54,13 @@ and sw.js served; 404 for bad ids.
 - Keep-alive cron first run (12:00 UTC 2026-10-27).
 
 ## Next action
-1. Ryan tests production signed in (student home, personal class, join a
-   class, teacher dashboard, roster); fix anything he finds.
-2. Ask the PE teacher / Mitty tech office whether student sign-in needs a
+1. Ryan tests PR #10 on its Vercel preview (steps in the PR body), then merges
+   on his OK. After the merge, re-run one signed-out production check.
+2. Then PR B (docs/02 §5): teacher sport consult + allowlisted research that
+   writes a brief onto a session. Confirm web-search pricing and model support
+   first. PR C (student sport brief, progression memory) needs its own
+   DECISIONS entry first, because it stores new minors' data.
+3. Ask the PE teacher / Mitty tech office whether student sign-in needs a
    school data agreement (open recommendation from 2026-10-27).
-3. UI revamp resumes only on Ryan's green light (branch `ui-revamp`).
-4. Real-phone check of Go mode and the question flow.
+4. UI revamp resumes only on Ryan's green light (branch `ui-revamp`).
+5. Real-phone check of Go mode and the question flow.
