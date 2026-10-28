@@ -266,3 +266,18 @@ second (Duration, Equipment, Intensity, Focus, Custom instructions).
   Older free text loads with matching presets as chips and the rest in Other;
   nothing is rewritten until a teacher saves. Checked against every stored
   equipment string in production.
+
+## 2026-10-28 — AI background on the class, specifics on the session; tabs
+Ryan went with the recs (docs/03 §7):
+
+- The brief becomes the class's **background** (general knowledge, live for
+  every session) and each session gets **specifics**, asked by the AI after the
+  background. Background and research are read from the class at generation
+  time, so editing them once updates every day.
+- **Saves own their fields** (settings vs background/research vs specifics), so
+  separate tabs can't overwrite each other.
+- **Tabs at 768px+ on the teacher's class and session pages**, two columns at
+  1024px+, phones and student pages unchanged. The classic look stays; this is
+  layout, not the parked visual revamp.
+- Next (PR B): named presets, copied in, with "apply to all my classes"
+  writing class default settings only.

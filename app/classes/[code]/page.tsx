@@ -4,6 +4,9 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { Card, CardTitle, Layout } from "@/components/ui";
 import { ClassEditor } from "@/components/ClassEditor";
+import { AIBackgroundCard } from "@/components/AIContext";
+import { DayReport } from "@/components/DayReport";
+import { Tabs } from "@/components/Tabs";
 import { ArchiveToggle, CopyButton, FileToggle, LabelEditor, PlanSessionForm } from "@/components/teacher/TeacherControls";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
 import { addDays, schoolDate, weekdayOf } from "@/lib/time";
@@ -17,10 +20,12 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Class — PE.AI", robots: { index: false } };
 
 type Params = Promise<{ code: string }>;
+type Search = Promise<{ tab?: string }>;
 
-// The owner's page for one class: a teacher's class (roster, student workouts,
-// ratings, report) or a student's personal class (settings + their history).
-export default async function OwnerClassPage({ params }: { params: Params }) {
+// The owner's page for one class: a teacher's class (tabs on iPad and computer:
+// Sessions, Settings, AI background, Students, Workouts; one scroll on phones)
+// or a student's personal class (settings + their history, one column).
+export default async function OwnerClassPage({ params, searchParams }: { params: Params; searchParams: Search }) {
   const code = (await params).code.toUpperCase();
   const account = await getAccount();
   if (!account) redirect(`/login?next=/classes/${code}`);
@@ -77,18 +82,84 @@ export default async function OwnerClassPage({ params }: { params: Params }) {
   const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
   const studentLink = `${origin}/c/${code}`;
 
-  return (
-    <Layout backHref={home} backLabel={personal ? "← Home" : "← Classes"}>
-      <div className="mb-4"><LabelEditor code={code} label={cls.label ?? ""} /></div>
+  const heading = "font-display text-[26px] font-black uppercase tracking-[-0.5px] mb-1";
 
-      {personal ? (
-        <Link
-          href={`/c/${code}`}
-          className="flex items-center justify-center w-full bg-accent text-bg rounded-lg px-7 py-4 font-display text-[22px] font-bold uppercase tracking-[0.5px] no-underline mb-6"
-        >
-          ⚡ Start a workout
-        </Link>
+  const archivedNote = cls.archived && (
+    <Card style={{ borderColor: "var(--accent2)" }}>
+      <div className="text-[14px] leading-[1.5]">
+        This class is archived. It&apos;s hidden from your list{personal ? "" : ", and students can still use the code"}.
+      </div>
+    </Card>
+  );
+
+  const filedSection = (
+    <section>
+      <div className={heading}>Filed Workouts</div>
+      <div className="text-muted text-[14px] mb-4">Workouts you pinned to {classLabel(cls)}.</div>
+      {filed.length === 0 ? (
+        <div className="text-muted text-[14px]">Nothing filed yet. Use &ldquo;+ File&rdquo; on any workout.</div>
       ) : (
+        <div className="flex flex-col gap-2">
+          {filed.map((w) => <WorkoutLine key={w.id} w={w} code={code} ownerId={account.id} filed showDay />)}
+        </div>
+      )}
+    </section>
+  );
+
+  const workoutsSection = (
+    <section>
+      <div className={heading}>{personal ? "Your Workouts" : "Student Workouts"}</div>
+      <div className="text-muted text-[14px] mb-4">
+        {personal ? "Everything you generated here in the last 90 days." : "Everything generated with this code in the last 14 days."}
+      </div>
+      {byDay.size === 0 ? (
+        <div className="text-muted text-[14px]">{personal ? "No workouts yet. Tap Start a workout." : "No student workouts yet. Share the code to get started."}</div>
+      ) : (
+        [...byDay.entries()].map(([day, list]) => {
+          const sessionName = list.map((w) => w.session_id && sessionNames.get(w.session_id)).find(Boolean);
+          return (
+            <div key={day} className="mb-5">
+              <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-2">
+                {dayLabel(day)}{sessionName ? ` · ${sessionName}` : ""} · {list.length} workout{list.length === 1 ? "" : "s"}
+              </div>
+              <div className="flex flex-col gap-2">
+                {list.map((w) => <WorkoutLine key={w.id} w={w} code={code} ownerId={account.id} filed={filedIds.has(w.id)} />)}
+              </div>
+            </div>
+          );
+        })
+      )}
+    </section>
+  );
+
+  const footer = (
+    <div className="mt-10 flex justify-between items-center gap-3">
+      <Link href={home} className="text-muted text-[13px]">← {personal ? "Home" : "All classes"}</Link>
+      <ArchiveToggle code={code} archived={cls.archived} home={home} />
+    </div>
+  );
+
+  // A student's personal class: one column, as before.
+  if (personal) return (
+    <Layout backHref={home} backLabel="← Home">
+      <div className="mb-4"><LabelEditor code={code} label={cls.label ?? ""} /></div>
+      <Link
+        href={`/c/${code}`}
+        className="flex items-center justify-center w-full bg-accent text-bg rounded-lg px-7 py-4 font-display text-[22px] font-bold uppercase tracking-[0.5px] no-underline mb-6"
+      >
+        ⚡ Start a workout
+      </Link>
+      {archivedNote}
+      <ClassEditor code={code} initialConfig={cls.config} kind={cls.kind} />
+      <div className="mt-10">{filedSection}</div>
+      <div className="mt-10">{workoutsSection}</div>
+      {footer}
+    </Layout>
+  );
+
+  const sessionsTab = (
+    <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+      <div>
         <div className="bg-surface2 border-[1.5px] border-accent rounded-xl p-6 text-center mb-4">
           <div className="text-[11px] font-semibold tracking-[2px] uppercase text-muted mb-2">Class code for students</div>
           <div className="font-display text-[52px] font-black text-accent tracking-[8px] leading-none mb-3.5">{code}</div>
@@ -98,120 +169,72 @@ export default async function OwnerClassPage({ params }: { params: Params }) {
           </div>
           <div className="text-muted text-[12px] mt-3">Students sign in with their Mitty account, then enter the code.</div>
         </div>
-      )}
-
-      {cls.archived && (
-        <Card style={{ borderColor: "var(--accent2)" }}>
-          <div className="text-[14px] leading-[1.5]">
-            This class is archived. It&apos;s hidden from your list{personal ? "" : ", and students can still use the code"}.
-          </div>
-        </Card>
-      )}
-
-      {!personal && (
-        <section className="mb-8">
-          <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mb-1">Sessions</div>
-          <div className="text-muted text-[14px] mb-4">
-            Each day can have its own settings. On a day without a session, students get the default settings below.
-          </div>
-          <div className="flex flex-col gap-2">
-            {todaySession ? (
-              <SessionLine s={todaySession} code={code} highlight />
-            ) : (
-              <div className="border border-dashed border-border rounded-xl px-4 py-3 text-[14px] text-muted">
-                No session today: students get the default settings.
-              </div>
-            )}
-            {upcoming.map((x) => <SessionLine key={x.id} s={x} code={code} />)}
-          </div>
-          <Card className="mt-4">
-            <CardTitle>Plan a session</CardTitle>
-            <PlanSessionForm code={code} defaultDate={planDate} minDate={today} copyOptions={copyOptions} />
-          </Card>
-          {past.length > 0 && (
-            <details>
-              <summary className="text-muted text-[13px] cursor-pointer">Past sessions ({past.length})</summary>
-              <div className="flex flex-col gap-2 mt-2">
-                {past.map((x) => <SessionLine key={x.id} s={x} code={code} />)}
-              </div>
-            </details>
-          )}
-        </section>
-      )}
-
-      <ClassEditor code={code} initialConfig={cls.config} kind={cls.kind} />
-
-      {!personal && (
-        <section className="mt-10">
-          <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mb-1">Roster</div>
-          <div className="text-muted text-[14px] mb-4">Students who joined with the code, and their workouts in the last 14 days.</div>
-          {roster.length === 0 ? (
-            <div className="text-muted text-[14px]">No one has joined yet.</div>
+        {archivedNote}
+      </div>
+      <section>
+        <div className={heading}>Sessions</div>
+        <div className="text-muted text-[14px] mb-4">
+          Each day can have its own settings. On a day without a session, students get the default settings.
+        </div>
+        <div className="flex flex-col gap-2">
+          {todaySession ? (
+            <SessionLine s={todaySession} code={code} highlight />
           ) : (
-            <Card className="!p-0 overflow-hidden">
-              {roster.map((r, i) => {
-                const st = perStudent.get(r.user_id);
-                return (
-                  <div key={r.user_id} className={`flex items-center justify-between gap-3 px-5 py-3 ${i ? "border-t border-border" : ""}`}>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-[15px] truncate">{r.name}</div>
-                      <div className="text-[12px] text-muted truncate">{r.email}</div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-display text-[20px] font-bold text-accent2 leading-none">{st?.total ?? 0}</div>
-                      <div className="text-[11px] text-muted mt-0.5">
-                        {st?.today ? `${st.today} today` : st?.last ? dayLabel(dayKey(st.last)) : "no workouts"}
-                      </div>
+            <div className="border border-dashed border-border rounded-xl px-4 py-3 text-[14px] text-muted">
+              No session today: students get the default settings.
+            </div>
+          )}
+          {upcoming.map((x) => <SessionLine key={x.id} s={x} code={code} />)}
+        </div>
+        <Card className="mt-4">
+          <CardTitle>Plan a session</CardTitle>
+          <PlanSessionForm code={code} defaultDate={planDate} minDate={today} copyOptions={copyOptions} />
+        </Card>
+        {past.length > 0 && (
+          <details>
+            <summary className="text-muted text-[13px] cursor-pointer">Past sessions ({past.length})</summary>
+            <div className="flex flex-col gap-2 mt-2">
+              {past.map((x) => <SessionLine key={x.id} s={x} code={code} />)}
+            </div>
+          </details>
+        )}
+      </section>
+    </div>
+  );
+
+  const studentsTab = (
+    <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
+      <section className="mb-10 lg:mb-0">
+        <div className={heading}>Roster</div>
+        <div className="text-muted text-[14px] mb-4">Students who joined with the code, and their workouts in the last 14 days.</div>
+        {roster.length === 0 ? (
+          <div className="text-muted text-[14px]">No one has joined yet.</div>
+        ) : (
+          <Card className="!p-0 overflow-hidden">
+            {roster.map((r, i) => {
+              const st = perStudent.get(r.user_id);
+              return (
+                <div key={r.user_id} className={`flex items-center justify-between gap-3 px-5 py-3 ${i ? "border-t border-border" : ""}`}>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-[15px] truncate">{r.name}</div>
+                    <div className="text-[12px] text-muted truncate">{r.email}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-display text-[20px] font-bold text-accent2 leading-none">{st?.total ?? 0}</div>
+                    <div className="text-[11px] text-muted mt-0.5">
+                      {st?.today ? `${st.today} today` : st?.last ? dayLabel(dayKey(st.last)) : "no workouts"}
                     </div>
                   </div>
-                );
-              })}
-            </Card>
-          )}
-        </section>
-      )}
-
-      <section className="mt-10">
-        <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mb-1">Filed Workouts</div>
-        <div className="text-muted text-[14px] mb-4">Workouts you pinned to {classLabel(cls)}.</div>
-        {filed.length === 0 ? (
-          <div className="text-muted text-[14px]">Nothing filed yet. Use &ldquo;+ File&rdquo; on any workout below.</div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {filed.map((w) => <WorkoutLine key={w.id} w={w} code={code} ownerId={account.id} filed showDay />)}
-          </div>
+                </div>
+              );
+            })}
+          </Card>
         )}
       </section>
-
-      <section className="mt-10">
-        <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mb-1">
-          {personal ? "Your Workouts" : "Student Workouts"}
-        </div>
-        <div className="text-muted text-[14px] mb-4">
-          {personal ? "Everything you generated here in the last 90 days." : "Everything generated with this code in the last 14 days."}
-        </div>
-        {byDay.size === 0 ? (
-          <div className="text-muted text-[14px]">{personal ? "No workouts yet. Tap Start a workout." : "No student workouts yet. Share the code to get started."}</div>
-        ) : (
-          [...byDay.entries()].map(([day, list]) => {
-            const sessionName = list.map((w) => w.session_id && sessionNames.get(w.session_id)).find(Boolean);
-            return (
-            <div key={day} className="mb-5">
-              <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-2">
-                {dayLabel(day)}{sessionName ? ` · ${sessionName}` : ""} · {list.length} workout{list.length === 1 ? "" : "s"}
-              </div>
-              <div className="flex flex-col gap-2">
-                {list.map((w) => <WorkoutLine key={w.id} w={w} code={code} ownerId={account.id} filed={filedIds.has(w.id)} />)}
-              </div>
-            </div>
-            );
-          })
-        )}
-      </section>
-
-      {!personal && (
-        <section className="mt-10">
-          <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mb-1">Ratings</div>
+      <div className="flex flex-col gap-10">
+        <DayReport code={code} />
+        <section>
+          <div className={heading}>Ratings</div>
           <div className="text-muted text-[14px] mb-4">What students said in the last 14 days.</div>
           {reviews.length === 0 ? (
             <div className="text-muted text-[14px]">No ratings yet.</div>
@@ -235,12 +258,31 @@ export default async function OwnerClassPage({ params }: { params: Params }) {
             </Card>
           )}
         </section>
-      )}
-
-      <div className="mt-10 flex justify-between items-center gap-3">
-        <Link href={home} className="text-muted text-[13px]">← {personal ? "Home" : "All classes"}</Link>
-        <ArchiveToggle code={code} archived={cls.archived} home={home} />
       </div>
+    </div>
+  );
+
+  const workoutsTab = (
+    <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
+      <div className="mb-10 lg:mb-0">{workoutsSection}</div>
+      {filedSection}
+    </div>
+  );
+
+  return (
+    <Layout backHref={home} backLabel="← Classes" wide>
+      <div className="mb-6 md:max-w-[620px]"><LabelEditor code={code} label={cls.label ?? ""} /></div>
+      <Tabs
+        initial={(await searchParams).tab}
+        tabs={[
+          { id: "sessions", label: "Sessions", content: sessionsTab },
+          { id: "settings", label: "Settings", content: <ClassEditor code={code} initialConfig={cls.config} kind={cls.kind} classConfig={cls.config} /> },
+          { id: "ai", label: "AI background", content: <AIBackgroundCard code={code} config={cls.config} /> },
+          { id: "students", label: "Students", content: studentsTab },
+          { id: "workouts", label: "Workouts", content: workoutsTab },
+        ]}
+      />
+      {footer}
     </Layout>
   );
 }

@@ -60,17 +60,20 @@ export function CardTitle({ children }: { children: ReactNode }) {
  * Page chrome: wordmark + optional back control. `onBack` renders a button
  * (in-app navigation); `backHref` renders a link (the shared workout page).
  */
-export function Layout({ onBack, backHref, backLabel = "← Back", children }: {
+export function Layout({ onBack, backHref, backLabel = "← Back", wide = false, children }: {
   onBack?: () => void;
   backHref?: string;
   backLabel?: string;
+  /** Teacher pages with tabs: wider on iPad and computer, same column on phones. */
+  wide?: boolean;
   children: ReactNode;
 }) {
   const backClass = "no-print bg-surface2 border border-border text-muted px-4 py-2 rounded-lg cursor-pointer text-[14px] font-body no-underline";
+  const width = wide ? "max-w-[740px] md:max-w-[1120px]" : "max-w-[740px]";
   return (
     <div className="min-h-screen flex flex-col items-center px-4 pb-[60px]">
       {/* Top bar */}
-      <div className="w-full max-w-[740px] flex items-center justify-between pt-5 pb-4 border-b border-border mb-9">
+      <div className={cn("w-full flex items-center justify-between pt-5 pb-4 border-b border-border mb-9", width)}>
         <Link href="/" className="font-display text-[28px] font-black tracking-[-0.5px] text-text no-underline">
           PE<span className="text-accent">.</span>AI
         </Link>
@@ -82,11 +85,11 @@ export function Layout({ onBack, backHref, backLabel = "← Back", children }: {
         )}
       </div>
 
-      <div className="w-full max-w-[740px]">
+      <div className={cn("w-full", width)}>
         {children}
       </div>
 
-      <footer className="no-print w-full max-w-[740px] mt-14 pt-5 border-t border-border flex gap-5 text-[13px] text-muted">
+      <footer className={cn("no-print w-full mt-14 pt-5 border-t border-border flex gap-5 text-[13px] text-muted", width)}>
         <Link href="/privacy" className="text-muted no-underline hover:text-text">Privacy</Link>
         <Link href="/terms" className="text-muted no-underline hover:text-text">Terms</Link>
       </footer>

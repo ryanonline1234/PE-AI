@@ -99,3 +99,28 @@ same JSON Lines stream. The briefs are short text in the prompt.
   clamp, student brief save / health-sentence filter / delete, and a
   generation that shows a brief steering the workout.
 - Ryan checks the pages signed in.
+
+## 7. Revision 2026-10-28: background first, session specifics after
+
+Ryan asked to call the brief "general background knowledge/context for the
+AI" with "session specifics asked after", to make research clearly optional,
+and to give iPad/computer a tabbed layout. Built on branch `ai-background-tabs`:
+
+- **`background`** (was `brief`) lives on the class's default settings: who
+  the students are, the unit, standing rules. Every session uses the class's
+  *current* background and pinned research at generation time
+  (`generationConfig` in `lib/class-config.ts`); sessions never store them.
+- **`specifics`** live on a session: the day's focus, what to avoid, how hard.
+  The session consult (`for: "session"`) reads the background and asks about
+  the day; it can start with nothing typed. The class consult is
+  `for: "background"`.
+- **Each save owns its fields.** `/api/save-class` takes either `{ config }`
+  (settings; background and research kept) or `{ background, sources }`.
+  `/api/class-sessions` PATCH takes `{ config }` (specifics kept) or
+  `{ specifics }`. The AI check's signature covers the five settings only.
+- **Research** sits under the background, collapsed, labeled Optional.
+- **Tabs** (768px and up): class page Sessions · Settings · AI background ·
+  Students · Workouts; session page Session specifics · Settings. Two-column
+  layouts inside tabs start at 1024px. Phones keep one stacked column; student
+  pages are unchanged. The open tab is in the URL (`?tab=`).
+- No data migration: no class or session had a brief or pinned research yet.

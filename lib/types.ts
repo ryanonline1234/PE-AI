@@ -29,10 +29,15 @@ export interface ClassConfig {
   summary?: string;
   /** Answers the teacher gave during the AI check. Fed to every generation. */
   clarifications?: QA[];
-  /** The teacher's plan for the day, from the sport consult or typed (docs/03). */
-  brief?: string;
-  /** Research findings the teacher pinned; URLs are on the trusted list. */
+  /**
+   * What the AI should know about the class in general (students, unit, standing
+   * rules). Lives on the class; every session uses the class's current version.
+   */
+  background?: string;
+  /** Research findings the teacher pinned, with the background; URLs are on the trusted list. */
   sources?: PinnedSource[];
+  /** One session's specifics (that day's focus, what to avoid, how hard). Sessions only. */
+  specifics?: string;
 }
 
 /** One research finding: a takeaway and the trusted page it came from. */
@@ -42,9 +47,9 @@ export interface PinnedSource {
   takeaway: string;
 }
 
-/** Response of /api/consult: a draft brief and any questions still open. */
+/** Response of /api/consult: the draft text and any questions still open. */
 export interface ConsultResult {
-  brief: string;
+  text: string;
   questions: AskQuestion[];
 }
 

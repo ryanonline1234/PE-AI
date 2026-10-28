@@ -40,9 +40,11 @@ writes to the production database — that's fine for test classes, don't bulk-e
   the session on the server (`app/api/generate-workout`, step 4c) and saves
   `workouts.session_id`. The prompt lives in `lib/workout-prompt.ts`. No calorie
   targets: the AI estimates.
-- **Planning help** (`docs/03-planning-help.md`): a session's `brief` + pinned
-  `sources` live in its config (`classParamsBlock` feeds both generation and the
-  AI check). `/api/consult` drafts briefs; `/api/research` = Sonnet 5.5 web search
+- **Planning help** (`docs/03-planning-help.md` §7): the class's `background` +
+  pinned `sources` live on the class and every session reads them live
+  (`generationConfig`); a session's `specifics` live on the session. Saves own
+  their fields (settings vs background vs specifics). `classParamsBlock` feeds
+  both generation and the AI check. `/api/consult` drafts briefs; `/api/research` = Sonnet 5.5 web search
   limited to `lib/trusted-sources.ts`, then Haiku structures findings with the
   source as an enum (no invented links). A student's own brief is in
   `student_briefs`, cleaned by `lib/student-brief.ts` (no health details), and

@@ -5,7 +5,7 @@ import { verifySecret } from "@/lib/auth";
 import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 import { applyEvent, drainLines, parseModelLine, reconcileTotals } from "@/lib/workout-stream";
 import { newWorkoutId, WORKOUT_ID_RE } from "@/lib/workout-id";
-import { clampConfig, cleanAnswers } from "@/lib/class-config";
+import { clampConfig, cleanAnswers, generationConfig } from "@/lib/class-config";
 import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
 import { canUseClass, ensureMember, getClassByCode, getSessionByDate, getSessionById, getStudentBrief } from "@/lib/class-access";
 import { sanitizeStudentText } from "@/lib/sanitize";
@@ -127,7 +127,9 @@ export async function POST(request: NextRequest) {
       session = await getSessionByDate(cls.id, schoolDate());
     }
   }
-  let cfg = (session?.config ?? cls.config) as ClassConfig;
+  // The session's settings and specifics (or the defaults) plus the class's
+  // current background and research, which every session shares.
+  let cfg = generationConfig(cls.config as ClassConfig, session?.config as ClassConfig | undefined);
   // The owner of a personal class may pick settings on the spot (a teacher's
   // own workout, /teacher/workout). Only the five settings come along; they're
   // saved so the form opens with them next time.

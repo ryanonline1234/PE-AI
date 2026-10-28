@@ -5,10 +5,16 @@ import { checkRateLimit, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 import { clampConfig } from "@/lib/class-config";
 import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
 import { getClassByCode } from "@/lib/class-access";
+import type { ClassConfig } from "@/lib/types";
 
 // Save a class's settings. Only the class's owner account may: a teacher for a
 // class, a student for their personal class. Classes are created through
 // /api/classes, never here.
+//
+// Two saves, each owning its own fields (docs/03 §7), so the Settings and AI
+// background tabs can't overwrite each other:
+//   { config }                  the settings; background and research are kept
+//   { background?, sources? }   the AI background and pinned research only
 export async function POST(request: NextRequest) {
   if (!verifySecret(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { account, withCookies } = await callerFromRequest(request);
@@ -21,7 +27,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   const code = typeof body.code === "string" ? body.code.toUpperCase() : "";
-  if (!body.config || typeof body.config !== "object") {
+  const settingsSave = !!body.config && typeof body.config === "object";
+  const backgroundSave = typeof body.background === "string" || Array.isArray(body.sources);
+  if (!settingsSave && !backgroundSave) {
     return NextResponse.json({ error: "Invalid config payload" }, { status: 400 });
   }
 
@@ -37,9 +45,17 @@ export async function POST(request: NextRequest) {
   }
 
   // Only known keys, clamped (lib/class-config.ts), so nobody can widen the limits.
+  const current = (cls.config ?? {}) as ClassConfig;
+  const config: ClassConfig = settingsSave
+    ? { ...clampConfig(body.config), background: current.background ?? "", sources: current.sources ?? [] }
+    : clampConfig({
+        ...current,
+        ...(typeof body.background === "string" ? { background: body.background } : {}),
+        ...(Array.isArray(body.sources) ? { sources: body.sources } : {}),
+      });
   const { error } = await supabase
     .from("pe_classes")
-    .update({ config: clampConfig(body.config), updated_at: new Date().toISOString() })
+    .update({ config, updated_at: new Date().toISOString() })
     .eq("id", cls.id);
   if (error) {
     console.error("save-class update error:", error);
