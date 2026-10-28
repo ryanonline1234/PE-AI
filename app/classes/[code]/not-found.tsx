@@ -6,8 +6,7 @@ export default function ClassNotFound() {
     <Layout backHref="/" backLabel="← Home">
       <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-2">Not one of your classes</div>
       <p className="text-muted text-[15px] leading-[1.6] max-w-[480px]">
-        That code isn&apos;t linked to your account. If it&apos;s a class you made before accounts existed, ask the
-        PE.AI admin to assign it to you. To do a workout in it, <Link href="/" className="text-accent">open it as a student</Link>.
+        That code isn&apos;t linked to your account. To do a workout in it, <Link href="/" className="text-accent">open it as a student</Link>.
       </p>
     </Layout>
   );

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Card, CardTitle, Layout } from "@/components/ui";
+import { Card, Layout } from "@/components/ui";
 import { AccountBar } from "@/components/teacher/AccountBar";
-import { AssignClassForm, FileChips, NewClassForm } from "@/components/teacher/TeacherControls";
-import { createServerClient } from "@/lib/supabase";
+import { FileChips, NewClassForm } from "@/components/teacher/TeacherControls";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
 import { classLabel, dayKey, dayLabel, loadClasses, loadFiling, loadReviews, loadWorkouts } from "@/lib/teacher-data";
 
@@ -42,17 +41,6 @@ export default async function TeacherHome() {
   const chipClasses = active.map((c) => ({ code: c.code, label: classLabel(c) }));
   const labelFor = new Map(classes.map((c) => [c.code, classLabel(c)]));
 
-  // Admin: classes made before accounts existed have no owner. RLS hides them,
-  // so read them with the service role, only after the admin check.
-  const unowned = account.role === "admin"
-    ? ((await createServerClient()
-        .from("pe_classes")
-        .select("code, label, config, updated_at")
-        .is("owner_id", null)
-        .order("updated_at", { ascending: false })
-        .limit(50)).data ?? [])
-    : [];
-
   return (
     <Layout backHref="/" backLabel="← Home">
       <AccountBar account={account} />
@@ -65,7 +53,7 @@ export default async function TeacherHome() {
       {active.length === 0 ? (
         <Card>
           <div className="text-muted text-[14px] leading-[1.6]">
-            No classes yet. Create one above. Classes you made before accounts existed can be assigned to you by the admin.
+            No classes yet. Create one above.
           </div>
         </Card>
       ) : (
@@ -114,33 +102,6 @@ export default async function TeacherHome() {
             ))}
           </div>
         </details>
-      )}
-
-      {account.role === "admin" && (
-        <Card className="mt-6" style={{ borderColor: "var(--accent2)" }}>
-          <CardTitle>Admin · classes with no owner ({unowned.length})</CardTitle>
-          <div className="text-muted text-[13px] leading-[1.5] mb-4">
-            Made before accounts. Students can still use the codes; nobody can edit them until you assign each one to a
-            teacher who has signed in once.
-          </div>
-          {unowned.length === 0 ? (
-            <div className="text-muted text-[14px]">None left.</div>
-          ) : (
-            <div className="flex flex-col">
-              {unowned.map((c) => (
-                <div key={c.code} className="border-t border-border py-3 first:border-t-0 first:pt-0">
-                  <div className="flex items-baseline justify-between gap-3 mb-2">
-                    <div className="font-display text-[18px] font-bold text-accent tracking-[2px]">{c.code}</div>
-                    <div className="text-[12px] text-muted truncate">
-                      {c.label || `${(c.config as { duration?: number }).duration ?? "?"} min · ${(c.config as { focus?: string }).focus ?? ""}`} · {dayLabel(dayKey(c.updated_at))}
-                    </div>
-                  </div>
-                  <AssignClassForm code={c.code} defaultEmail={account.email} />
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
       )}
 
       <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mt-10 mb-1">My Workouts</div>

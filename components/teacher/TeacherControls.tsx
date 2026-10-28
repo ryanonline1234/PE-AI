@@ -4,7 +4,7 @@
 // API route, then refreshes the server-rendered page so lists stay in sync.
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { apiAssignClass, apiCreateClass, apiFileWorkout, apiUpdateClass } from "@/lib/api";
+import { apiCreateClass, apiFileWorkout, apiUpdateClass } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const input = "w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none";
@@ -74,50 +74,6 @@ export function JoinClassForm() {
         autoComplete="off"
       />
       <button type="submit" className={btn} disabled={busy || code.length < 6}>{busy ? "…" : "Go →"}</button>
-    </form>
-  );
-}
-
-/** Admin: give a pre-accounts class (no owner) to a teacher who has signed in once. */
-export function AssignClassForm({ defaultEmail, code: fixedCode }: { defaultEmail: string; code?: string }) {
-  const router = useRouter();
-  const [code, setCode] = useState(fixedCode ?? "");
-  const [email, setEmail] = useState(defaultEmail);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true); setErr("");
-    try {
-      await apiAssignClass(code, email);
-      router.refresh();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    }
-    setBusy(false);
-  }
-  return (
-    <form onSubmit={submit}>
-      <div className="flex gap-2 flex-wrap">
-        {!fixedCode && (
-          <input
-            className={cn(input, "w-[120px] font-display tracking-[3px] uppercase")}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase())}
-            placeholder="CODE"
-            aria-label="Class code"
-          />
-        )}
-        <input
-          className={cn(input, "flex-1 min-w-[200px] py-2 text-[14px]")}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="teacher@mitty.com"
-          aria-label="Teacher email"
-        />
-        <button type="submit" className={ghost} disabled={busy || code.length < 6}>{busy ? "…" : "Assign"}</button>
-      </div>
-      <ErrorLine msg={err} />
     </form>
   );
 }

@@ -138,6 +138,3 @@ export const apiUpdateClass = (code: string, patch: { label?: string; archived?:
 
 export const apiFileWorkout = (code: string, workoutId: string, filed: boolean) =>
   postJson<{ ok: true; filed: boolean }>("/api/class-workouts", { code, workoutId, filed });
-
-export const apiAssignClass = (code: string, email: string) =>
-  postJson<{ ok: true }>("/api/admin/assign-class", { code, email });

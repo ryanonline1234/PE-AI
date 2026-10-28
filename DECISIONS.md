@@ -180,3 +180,21 @@ the PE teacher and Mitty's tech office): everyone signs in.
   service worker cached signed-in pages (now public pages only, and sign-out
   sends `Clear-Site-Data: "cache"`, scope "local"), and review→workout links
   weren't checked against the class.
+
+## 2026-10-27 — Pre-account classes deleted, not assigned
+- Ryan won't assign the classes made before accounts, so all 20 unowned
+  classes were deleted (with their 31 anonymous workouts and 2 ratings; no
+  members or filings hung off them). Their old codes now 404. Four of the 20
+  were Claude's teacher-key test classes from 2026-10-26; HMJ8TW held the
+  smoke-test workouts.
+- Backed up first to `~/pe-ai-backups/2026-10-27-unowned-classes.json` on
+  Ryan's Mac, outside the repo, since the rows include student names and the
+  repo is public. Restore = re-insert from that file; delete it when no longer
+  wanted.
+- No new unowned classes can appear: the only insert (`POST /api/classes`)
+  always sets `owner_id`. The admin box on /teacher and
+  `/api/admin/assign-class` are now dead code, kept until Ryan decides.
+- Same day, Ryan's call: the dead admin-assign code was removed too (admin box
+  on /teacher, `/api/admin/assign-class`, `AssignClassForm`, `apiAssignClass`,
+  and the "ask the admin to assign it" copy). The `admin` role stays; it now
+  only counts as a teacher and shows "· admin" in the account bar.

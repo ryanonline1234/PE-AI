@@ -1,8 +1,8 @@
 # 01 — Teacher accounts with Mitty Google sign-in (design, not built)
 
 _Status: BUILT 2026-10-26, then SUPERSEDED IN PART on 2026-10-27 (DECISIONS):
-everyone signs in (students too), teacher keys are gone (admin assigns old
-classes), and students can make personal classes. §1-§6 below describe the
+everyone signs in (students too), teacher keys are gone (the old unowned
+classes were deleted, not assigned), and students can make personal classes. §1-§6 below describe the
 teacher side as designed; decision 1 ("students keep class codes") no longer holds._
 
 ## 1. Goal
