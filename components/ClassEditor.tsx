@@ -13,9 +13,10 @@ import { configSignature, DEFAULT_CONFIG, withoutCalorieTargets } from "@/lib/cl
 import { applyEvent } from "@/lib/workout-stream";
 import { EMPTY_WORKOUT, type ClassCheck, type ClassConfig, type QA, type ReportMeta, type Workout } from "@/lib/types";
 import { QuestionList, collectAnswers, NO_ANSWERS, type Answers } from "@/components/QuestionList";
-import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle, Chip, Field, Textarea } from "@/components/ui";
+import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle, Field } from "@/components/ui";
 import { WorkoutScreen } from "@/components/WorkoutScreen";
 import { PlanWithAI } from "@/components/PlanWithAI";
+import { SettingsFields } from "@/components/SettingsFields";
 
 /** The teacher's AI check in progress: what the AI said, and the answers so far. */
 interface CheckState extends ClassCheck {
@@ -198,47 +199,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
           </div>
         )}
 
-        <Field label={`Duration — ${config.duration} min`}>
-          <input type="range" min="10" max="90" step="5" value={config.duration}
-            onChange={e => cfgSet("duration", +e.target.value)}
-            className="w-full accent-accent"
-          />
-        </Field>
-
-        <Field label="Intensity">
-          <div className="flex flex-wrap gap-2">
-            {([["Low","low"],["Moderate","moderate"],["High","high"]] as const).map(([l,v]) =>
-              <Chip key={v} label={l} value={v} current={config.intensity} onChange={val => cfgSet("intensity", val)} />
-            )}
-          </div>
-        </Field>
-
-        <Field label="Workout Focus">
-          <div className="flex flex-wrap gap-2">
-            {([["Mixed","mixed"],["Cardio","cardio"],["Strength","strength"],["Flexibility","flexibility"]] as const).map(([l,v]) =>
-              <Chip key={v} label={l} value={v} current={config.focus} onChange={val => cfgSet("focus", val)} />
-            )}
-          </div>
-        </Field>
-
-        <Field label="Equipment Available">
-          <Textarea
-            value={config.equipment}
-            onChange={v => cfgSet("equipment", v.slice(0, 500))}
-            placeholder="e.g. No equipment — bodyweight only, resistance bands, mats, jump ropes, full gym with free weights…"
-          />
-        </Field>
-
-        <Field label="Custom Instructions (optional — max 500 chars)">
-          <Textarea
-            value={config.customPrompt}
-            onChange={v => cfgSet("customPrompt", v.slice(0, 500))}
-            placeholder="e.g. Focus on teamwork exercises, avoid jumping movements, theme this week around the Olympics…"
-          />
-          <div className="text-[12px] text-muted mt-1 text-right">
-            {config.customPrompt.length}/500
-          </div>
-        </Field>
+        <SettingsFields config={config} onChange={cfgSet} />
 
         {(config.summary || (config.clarifications?.length ?? 0) > 0) && (
           <Field label="What the AI knows about this class">

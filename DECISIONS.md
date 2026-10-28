@@ -244,3 +244,25 @@ Ryan said go ahead with ideas 1–3 from the docs/02 §5 brainstorm. Design in
   save, the consult never asks about them, teachers never see the brief, and
   it reaches the model in the student's message under the teacher's settings.
   The privacy page says so.
+
+## 2026-10-28 — Teachers' own workouts; equipment presets
+Ryan asked for teachers to generate their own workout "like a student except
+all the stuff is filled in right then", with a note that students never see
+those fields, and for equipment to become preset buttons plus Other, moved
+second (Duration, Equipment, Intensity, Focus, Custom instructions).
+
+- **A teacher's own workouts live in their one personal class** ("Just me"),
+  created on the first Generate through `POST /api/classes { solo: true }`.
+  Teachers can't otherwise make personal classes, so no schema change or flag
+  is needed; `/teacher` hides it from the class list. Workouts show under My
+  Workouts as "Made for yourself".
+- **Settings filled in on the spot:** `/teacher/workout` sends the five
+  settings with each generation; the route accepts them only for the owner of
+  a personal class (a teacher class ignores them, so students' settings stay
+  the teacher's), drops summary/brief/research, and saves them so the form
+  opens with the last-used settings.
+- **Equipment stays a text field underneath:** chips + Other are stored as
+  "Mats, Cones. Also: foam rollers", the string the prompt already reads.
+  Older free text loads with matching presets as chips and the rest in Other;
+  nothing is rewritten until a teacher saves. Checked against every stored
+  equipment string in production.

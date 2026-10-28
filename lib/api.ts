@@ -136,6 +136,9 @@ async function postJson<T>(url: string, body: unknown, method = "POST"): Promise
 /** Teachers get a class; students get a personal class. The server decides. */
 export const apiCreateClass = (label: string) => postJson<{ code: string }>("/api/classes", { label });
 
+/** A teacher's own-workout space (their one personal class), created on first use. */
+export const apiSoloClass = () => postJson<{ code: string }>("/api/classes", { solo: true });
+
 export const apiUpdateClass = (code: string, patch: { label?: string; archived?: boolean }) =>
   postJson<{ ok: true }>("/api/classes", { code, ...patch }, "PATCH");
 
