@@ -1,15 +1,15 @@
 # STATE.md — where PE.AI is right now
 
-_Updated 2026-10-27. Overwrite in place at every handoff._
+_Updated 2026-10-28. Overwrite in place at every handoff._
 
 ## Status
-Live in production (`main` @ e8aa715, PR #7 merged 2026-10-27): mandatory Mitty
+Live in production (`main` @ f11434c, PR #8 merged 2026-10-28; PR #7 2026-10-27): mandatory Mitty
 Google sign-in for everyone, no teacher keys, student /me home with up to 3
 personal classes, /c/CODE workout page (records class membership), /classes/CODE
 owner page with roster, name-free AI prompts. Ryan's Mitty student account is
 `admin`. The 20 pre-account (unowned) classes were deleted 2026-10-27 after a
 local backup (see DECISIONS); every class now has an owner, and the
-admin-assign box and route are gone (branch `remove-admin-assign`).
+admin-assign box and route are gone (PR #8; the old route 404s in production).
 
 Verified in production signed out: every page redirects to /login with the
 right `next`, old /?code= and /teacher/CODE links forward, API routes 401,
