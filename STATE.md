@@ -33,6 +33,16 @@ deleted afterwards (sessions + workouts cascade); class count back to 10.
 NOT covered: rendering the signed-in pages (Sessions list, session page,
 student header). Claude can't sign in; Ryan's eyes on production cover it.
 
+**Open: PR #11 (`planning-help`)**, docs/03 + DECISIONS 2026-10-28: sport
+consult → brief (teacher sessions/defaults and students' "My sport"), research
+on trusted sites with pinnable findings (teachers), `student_briefs` table
+(migration 20261028000009 already applied; `main` ignores it). Verified by
+Claude: tsc/lint/build, a live research run (4 searches, 5 findings, all
+pmc.ncbi.nlm.nih.gov, 38.8 s), the route harness 24/24 (consult, access rules,
+link allowlist incl. a homograph, brief steering a workout, student brief
+health filter + delete) and sessions 34/34 again, cards at 375px on a deleted
+local fixture page. NOT verified: the signed-in pages themselves (Ryan).
+
 The UI revamp is parked on branch `ui-revamp` (classic UI frozen as tag
 `ui-classic-v1` + branch `ui-classic`) until Ryan's green light.
 
@@ -67,13 +77,13 @@ and sw.js served; 404 for bad ids.
 - Keep-alive cron first run (12:00 UTC 2026-10-27).
 
 ## Next action
-1. Ryan glances at a teacher class in production (Sessions section, plan
-   one, its page) since Claude can't render signed-in pages.
-2. Then PR B (docs/02 §5): teacher sport consult + allowlisted research that
-   writes a brief onto a session. Confirm web-search pricing and model support
-   first. PR C (student sport brief, progression memory) needs its own
-   DECISIONS entry first, because it stores new minors' data.
+1. Ryan tests PR #11 on its preview signed in (steps in the PR body), then
+   merges on his OK. After the merge, one signed-out production check.
+2. Ryan glances at a teacher class in production (Sessions section).
 3. Ask the PE teacher / Mitty tech office whether student sign-in needs a
-   school data agreement (open recommendation from 2026-10-27).
+   school data agreement (open recommendation from 2026-10-27). PR #11 adds
+   stored sport briefs, which makes the question more pressing.
 4. UI revamp resumes only on Ryan's green light (branch `ui-revamp`).
 5. Real-phone check of Go mode and the question flow.
+6. Later ideas (docs/02 §5): progression memory, "why this exercise",
+   week planner, equipment presets, sport library.
