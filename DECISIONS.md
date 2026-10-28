@@ -198,3 +198,23 @@ the PE teacher and Mitty's tech office): everyone signs in.
   on /teacher, `/api/admin/assign-class`, `AssignClassForm`, `apiAssignClass`,
   and the "ask the admin to assign it" copy). The `admin` role stays; it now
   only counts as a teacher and shows "· admin" in the account bar.
+
+## 2026-10-28 — Dated sessions; a calorie estimate instead of a target
+Ryan asked to drop the minimum-calorie setting ("just give students a blind
+estimate") and to set settings per session, since different days have
+different settings. Design in `docs/02-sessions.md`; Ryan went with the recs:
+
+- **Sessions are dated.** One per teacher class per school date
+  (America/Los_Angeles). Students get today's session; on a day without one
+  they get the class's default settings (the old class config). Rejected: a
+  "live" switch the teacher flips each period, because it breaks the day they
+  forget. A regeneration keeps the session of the workout it edits.
+- **Personal classes keep one set of settings** in v1.
+- **No calorie target.** The AI estimates honestly for a typical high school
+  student; the workout shows the total as an estimate and no longer shows
+  per-exercise kcal, which looked precise and isn't. The JSON Lines format is
+  unchanged.
+- **Phasing.** PR A = sessions + the estimate. PR B = teacher planning help
+  (sport consult, allowlisted research with sources) that writes a brief onto
+  a session. PR C = a student's own sport brief (no health details stored)
+  and progression memory. Each merges only on Ryan's OK.
