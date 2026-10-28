@@ -12,7 +12,7 @@ import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
 import { addDays, schoolDate, weekdayOf } from "@/lib/time";
 import type { ClassSession } from "@/lib/types";
 import {
-  classLabel, dayKey, dayLabel, loadClass, loadFiling, loadReviews, loadRoster, loadSessions, loadWorkouts, loadWorkoutsByIds, timeLabel,
+  classLabel, dayKey, dayLabel, loadClass, loadFiling, loadPresets, loadReviews, loadRoster, loadSessions, loadWorkouts, loadWorkoutsByIds, timeLabel,
   type WorkoutRow,
 } from "@/lib/teacher-data";
 
@@ -37,12 +37,13 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
   const personal = cls.kind === "personal";
   const today = schoolDate();
 
-  const [recent, reviews, filing, roster, sessions] = await Promise.all([
+  const [recent, reviews, filing, roster, sessions, presets] = await Promise.all([
     loadWorkouts({ classCodes: [code], sinceDays: personal ? 90 : 14, limit: 300 }),
     personal ? Promise.resolve([]) : loadReviews([code], 14),
     loadFiling([cls]),
     personal ? Promise.resolve([]) : loadRoster(cls.id),
     personal ? Promise.resolve([]) : loadSessions(cls.id, addDays(today, -14)),
+    personal ? Promise.resolve([]) : loadPresets(),
   ]);
   const filed = await loadWorkoutsByIds([...filing.keys()]);
   const filedIds = new Set(filed.map((w) => w.id));
@@ -188,7 +189,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
         </div>
         <Card className="mt-4">
           <CardTitle>Plan a session</CardTitle>
-          <PlanSessionForm code={code} defaultDate={planDate} minDate={today} copyOptions={copyOptions} />
+          <PlanSessionForm code={code} defaultDate={planDate} minDate={today} copyOptions={copyOptions} presets={presets} />
         </Card>
         {past.length > 0 && (
           <details>
@@ -276,7 +277,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
         initial={(await searchParams).tab}
         tabs={[
           { id: "sessions", label: "Sessions", content: sessionsTab },
-          { id: "settings", label: "Settings", content: <ClassEditor code={code} initialConfig={cls.config} kind={cls.kind} classConfig={cls.config} /> },
+          { id: "settings", label: "Settings", content: <ClassEditor code={code} initialConfig={cls.config} kind={cls.kind} classConfig={cls.config} presets={presets} /> },
           { id: "ai", label: "AI background", content: <AIBackgroundCard code={code} config={cls.config} /> },
           { id: "students", label: "Students", content: studentsTab },
           { id: "workouts", label: "Workouts", content: workoutsTab },

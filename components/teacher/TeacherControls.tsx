@@ -4,7 +4,11 @@
 // API route, then refreshes the server-rendered page so lists stay in sync.
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { apiCreateClass, apiCreateSession, apiDeleteSession, apiFileWorkout, apiUpdateClass, apiUpdateSession } from "@/lib/api";
+import {
+  apiApplyPresetToAll, apiCreateClass, apiCreateSession, apiDeletePreset, apiDeleteSession, apiFileWorkout, apiRenamePreset,
+  apiUpdateClass, apiUpdateSession,
+} from "@/lib/api";
+import { describePreset, type SettingPreset } from "@/lib/presets";
 import { cn } from "@/lib/utils";
 
 const input = "w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none";
@@ -18,16 +22,18 @@ function ErrorLine({ msg }: { msg: string }) {
 export function NewClassForm({
   placeholder = "Class name, e.g. Period 3 · Freshman PE",
   buttonLabel = "+ New class",
-}: { placeholder?: string; buttonLabel?: string }) {
+  presets = [],
+}: { placeholder?: string; buttonLabel?: string; presets?: { id: string; name: string }[] }) {
   const router = useRouter();
   const [label, setLabel] = useState("");
+  const [presetId, setPresetId] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setErr("");
     try {
-      const { code } = await apiCreateClass(label);
+      const { code } = await apiCreateClass(label, presetId || undefined);
       router.push(`/classes/${code}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -46,6 +52,17 @@ export function NewClassForm({
         />
         <button type="submit" className={btn} disabled={busy}>{busy ? "Creating…" : buttonLabel}</button>
       </div>
+      {presets.length > 0 && (
+        <select
+          className={cn(input, "mt-2.5 py-2.5 text-[14px]")}
+          value={presetId}
+          onChange={(e) => setPresetId(e.target.value)}
+          aria-label="Start the new class from"
+        >
+          <option value="">Start from the standard settings</option>
+          {presets.map((p) => <option key={p.id} value={p.id}>Start from preset “{p.name}”</option>)}
+        </select>
+      )}
       <ErrorLine msg={err} />
     </form>
   );
@@ -222,12 +239,14 @@ export function FileToggle({ code, workoutId, filed }: { code: string; workoutId
 // ── Sessions (docs/02-sessions.md) ────────────────────────────
 
 /** Pick a date and what to copy from, then open the new session. */
-export function PlanSessionForm({ code, defaultDate, minDate, copyOptions }: {
+export function PlanSessionForm({ code, defaultDate, minDate, copyOptions, presets = [] }: {
   code: string;
   defaultDate: string;
   minDate: string;
   /** Earlier sessions to copy from: value = their date. The defaults are always offered. */
   copyOptions: { value: string; label: string }[];
+  /** The teacher's presets, applied on top of the defaults. */
+  presets?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [date, setDate] = useState(defaultDate);
@@ -265,7 +284,16 @@ export function PlanSessionForm({ code, defaultDate, minDate, copyOptions }: {
           aria-label="Start from"
         >
           <option value="">Start from the default settings</option>
-          {copyOptions.map((o) => <option key={o.value} value={o.value}>Copy {o.label}</option>)}
+          {copyOptions.length > 0 && (
+            <optgroup label="Earlier sessions">
+              {copyOptions.map((o) => <option key={o.value} value={o.value}>Copy {o.label}</option>)}
+            </optgroup>
+          )}
+          {presets.length > 0 && (
+            <optgroup label="Presets">
+              {presets.map((p) => <option key={p.id} value={`preset:${p.id}`}>Preset “{p.name}”</option>)}
+            </optgroup>
+          )}
         </select>
         <button type="submit" className={btn} disabled={busy || !date}>{busy ? "Planning…" : "+ Plan"}</button>
       </div>
@@ -331,6 +359,90 @@ export function DeleteSessionButton({ code, date }: { code: string; date: string
   return (
     <div className="text-right">
       <button type="button" onClick={remove} className={ghost} disabled={busy}>{busy ? "Deleting…" : "Delete session"}</button>
+      <ErrorLine msg={err} />
+    </div>
+  );
+}
+
+// ── Setting presets (DECISIONS 2026-10-28) ────────────────────
+
+/** The teacher's presets on /teacher: apply to every class, rename, delete. */
+export function PresetList({ presets }: { presets: SettingPreset[] }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+
+  async function run(id: string, fn: () => Promise<string>) {
+    setBusy(id); setErr(""); setMsg("");
+    try {
+      setMsg(await fn());
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    }
+    setBusy(null);
+  }
+
+  if (presets.length === 0) {
+    return (
+      <div className="text-muted text-[14px] leading-[1.6]">
+        None yet. In any class&apos;s Settings tab, tap &ldquo;Save as preset…&rdquo; to name a set of settings, then
+        apply it to one class or all of them.
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      {presets.map((p) => (
+        <div key={p.id} className="bg-surface border border-border rounded-xl px-4 py-3">
+          {renaming === p.id ? (
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => { e.preventDefault(); void run(p.id, async () => { await apiRenamePreset(p.id, name); setRenaming(null); return "Renamed."; }); }}
+            >
+              <input className={input} value={name} onChange={(e) => setName(e.target.value.slice(0, 60))} aria-label="Preset name" autoFocus />
+              <button type="submit" className={ghost} disabled={busy === p.id || !name.trim()}>Save</button>
+              <button type="button" className={ghost} onClick={() => setRenaming(null)}>Cancel</button>
+            </form>
+          ) : (
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="font-semibold text-[15px]">{p.name}</div>
+                <div className="text-[12px] text-muted">{describePreset(p.fields)}</div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  className={ghost}
+                  disabled={busy === p.id}
+                  onClick={() => {
+                    if (!window.confirm(`Apply “${p.name}” to all your classes? Their default settings change; planned sessions stay as they are.`)) return;
+                    void run(p.id, async () => { const r = await apiApplyPresetToAll(p.id); return `Applied “${p.name}” to ${r.applied} class${r.applied === 1 ? "" : "es"}.`; });
+                  }}
+                >
+                  Apply to all classes
+                </button>
+                <button type="button" className={ghost} onClick={() => { setRenaming(p.id); setName(p.name); }}>Rename</button>
+                <button
+                  type="button"
+                  className={ghost}
+                  disabled={busy === p.id}
+                  onClick={() => {
+                    if (!window.confirm(`Delete “${p.name}”? Classes it was applied to keep their settings.`)) return;
+                    void run(p.id, async () => { await apiDeletePreset(p.id); return "Deleted."; });
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+      {msg && <div className="text-[13px] text-accent">{msg}</div>}
       <ErrorLine msg={err} />
     </div>
   );

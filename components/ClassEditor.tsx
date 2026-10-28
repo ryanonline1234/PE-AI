@@ -11,7 +11,8 @@
 // Remount it (React `key`) when the class changes; it owns its own form state.
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { apiClarifyClass, apiGenerateWorkoutStream, apiSaveClass, apiUpdateSession } from "@/lib/api";
+import { apiClarifyClass, apiGenerateWorkoutStream, apiSaveBackground, apiSaveClass, apiUpdateSession } from "@/lib/api";
+import { applyPreset, type SettingPreset } from "@/lib/presets";
 import { configSignature, DEFAULT_CONFIG, withoutCalorieTargets } from "@/lib/class-config";
 import { applyEvent } from "@/lib/workout-stream";
 import { EMPTY_WORKOUT, type ClassCheck, type ClassConfig, type QA, type Workout } from "@/lib/types";
@@ -19,6 +20,7 @@ import { QuestionList, collectAnswers, NO_ANSWERS, type Answers } from "@/compon
 import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle } from "@/components/ui";
 import { WorkoutScreen } from "@/components/WorkoutScreen";
 import { SettingsFields } from "@/components/SettingsFields";
+import { PresetBar } from "@/components/PresetBar";
 
 /** The teacher's AI check in progress: what the AI said, and the answers so far. */
 interface CheckState extends ClassCheck {
@@ -27,7 +29,7 @@ interface CheckState extends ClassCheck {
 }
 
 
-export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfig }: {
+export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfig, presets }: {
   code: string;
   initialConfig: ClassConfig;
   /** "personal": a student's own training class — no sample preview. */
@@ -36,6 +38,8 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
   sessionDate?: string;
   /** The class's saved config, so the AI check reads the shared background too. */
   classConfig?: ClassConfig;
+  /** The teacher's setting presets (teacher classes and sessions); omit to hide the bar. */
+  presets?: SettingPreset[];
 }) {
   const personal = kind === "personal";
   // Older summaries still state a calorie target; don't show one that no longer applies.
@@ -50,6 +54,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
   const [saveMsg, setSaveMsg] = useState("");
   const [error, setError] = useState("");
 
+  const [fieldsKey, setFieldsKey] = useState(0);
   const [sample, setSample] = useState<Workout | null>(null);
   const [sampleId, setSampleId] = useState<string | null>(null);
   const [sampleStreaming, setSampleStreaming] = useState(false);
@@ -135,6 +140,25 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
     await saveClass({ ...config, summary: "" });
   }
 
+  /** Copy a preset into the form (saved with Save, like any edit). Its AI background lives on the class. */
+  async function applyPresetToForm(p: SettingPreset) {
+    // Remount the settings fields so the equipment chips show the preset's picks.
+    setConfig((c) => applyPreset(c, p.fields, { background: false }));
+    setFieldsKey((k) => k + 1);
+    setSaveMsg(""); setError("");
+    if (p.fields.background === undefined) return;
+    if (sessionDate) {
+      setSaveMsg("This preset's AI background belongs to the class, so it wasn't applied here.");
+      return;
+    }
+    try {
+      await apiSaveBackground(code, { background: p.fields.background });
+      setSaveMsg("The preset's AI background was saved to this class. Save to keep the settings.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   function removeClarification(index: number) {
     setConfig((c) => ({ ...c, clarifications: (c.clarifications ?? []).filter((_, i) => i !== index) }));
   }
@@ -186,7 +210,16 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
           </div>
         )}
 
-        <SettingsFields config={config} onChange={cfgSet} />
+        {presets && (
+          <PresetBar
+            presets={presets}
+            config={config}
+            background={(classConfig ?? config).background ?? ""}
+            onApply={applyPresetToForm}
+          />
+        )}
+
+        <SettingsFields key={fieldsKey} config={config} onChange={cfgSet} />
       </Card>
 
       <div className="lg:sticky lg:top-16">

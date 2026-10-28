@@ -37,16 +37,21 @@ student header). Claude can't sign in; Ryan's eyes on production cover it.
 checks passed, new APIs 401, privacy page updated): sport consult → brief,
 trusted-site research with pinnable findings, students' "My sport" briefs.
 
-**Teachers' own workouts + equipment chips are live** (PR #12 merged
-2026-10-28, prod @ ac7c939), DECISIONS 2026-10-28: /teacher/workout (settings
-filled in on the same form, with a note that students never see them; stored
-in the teacher's one personal class "Just me") and equipment as preset chips +
-Other, moved second. Verified by Claude: tsc/lint/build, own-workout route
-harness 11/11, sessions 34/34, every stored equipment string round-trips, both
-forms at 375px, and signed out in production (/teacher/workout → /login with
-the right `next`). NOT yet exercised by a real sign-in: after Ryan's preview
-test no teacher "Just me" space existed, so no own workout had been generated
-through the real page.
+**Teachers' own workouts + equipment chips are live** (PR #12, prod @ ac7c939).
+Not yet exercised by a real sign-in (no teacher "Just me" space existed after
+Ryan's preview test).
+
+**Open, stacked:**
+- **PR #13 (`ai-background-tabs`)**, docs/03 §7: "Background for the AI" on
+  the class (live for every session) + session specifics asked after it;
+  research optional; tabs at 768px+ on the teacher class and session pages.
+  Harness 15/15, sessions 34/34, own workout 11/11, tabs checked at 1280/820/375.
+- **PR #14 (`presets`, based on #13)**: named setting presets, copied in;
+  apply in Settings, start a class/session from one, or apply to all classes.
+  Table `setting_presets` (migration 20261028000010, applied). Harness 16/16
+  (Ryan's own classes snapshotted and restored exactly), checked at 1280/375.
+  Merge #13 first, then retarget #14 to main.
+NOT verified by Claude: the signed-in pages (Ryan).
 
 The UI revamp is parked on branch `ui-revamp` (classic UI frozen as tag
 `ui-classic-v1` + branch `ui-classic`) until Ryan's green light.
@@ -82,12 +87,11 @@ and sw.js served; 404 for bad ids.
 - Keep-alive cron first run (12:00 UTC 2026-10-27).
 
 ## Next action
-1. Ryan makes one own workout in production (/teacher → ⚡ Make a workout for
-   myself); Claude confirms a "Just me" space and its workout exist.
-2. Ask the PE teacher / Mitty tech office whether student sign-in needs a
-   school data agreement (open since 2026-10-27; stored sport briefs make it
-   more pressing).
-3. UI revamp resumes only on Ryan's green light (branch `ui-revamp`).
-4. Real-phone check of Go mode and the question flow.
-5. Later ideas (docs/02 §5): progression memory, "why this exercise",
-   week planner, equipment presets per space, sport library.
+1. Ryan tests PR #13 on its preview, then merges; retarget PR #14 to main,
+   test, merge.
+2. Ryan makes one own workout in production (/teacher → ⚡ Make a workout for
+   myself) so the "Just me" path is exercised signed in.
+3. UI improvement brainstorm (2026-10-28) → Ryan picks what to build.
+4. Ask the PE teacher / Mitty tech office about a school data agreement
+   (open since 2026-10-27).
+5. Real-phone check of Go mode and the question flow.

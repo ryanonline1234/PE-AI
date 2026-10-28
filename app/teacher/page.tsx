@@ -3,9 +3,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, Layout } from "@/components/ui";
 import { AccountBar } from "@/components/teacher/AccountBar";
-import { FileChips, NewClassForm } from "@/components/teacher/TeacherControls";
+import { FileChips, NewClassForm, PresetList } from "@/components/teacher/TeacherControls";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
-import { classLabel, dayKey, dayLabel, loadClasses, loadFiling, loadReviews, loadWorkouts } from "@/lib/teacher-data";
+import { classLabel, dayKey, dayLabel, loadClasses, loadFiling, loadPresets, loadReviews, loadWorkouts } from "@/lib/teacher-data";
 
 export const metadata: Metadata = { title: "Your classes — PE.AI", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -21,11 +21,12 @@ export default async function TeacherHome() {
   const classes = owned.filter((c) => c.kind === "class");
   const space = owned.find((c) => c.kind === "personal");
   const codes = classes.map((c) => c.code);
-  const [recent, reviews, mine, filing] = await Promise.all([
+  const [recent, reviews, mine, filing, presets] = await Promise.all([
     loadWorkouts({ classCodes: codes, sinceDays: 30, limit: 1000 }),
     loadReviews(codes, 30),
     loadWorkouts({ createdBy: account.id, limit: 40 }),
     loadFiling(classes),
+    loadPresets(),
   ]);
 
   const today = dayKey(new Date().toISOString());
@@ -52,7 +53,7 @@ export default async function TeacherHome() {
       <div className="font-display text-[42px] font-black uppercase tracking-[-1px] leading-none mb-2">Your Classes</div>
       <div className="text-muted text-[15px] mb-6">Each class has its own code. Students sign in with their Mitty account and enter it.</div>
 
-      <div className="mb-3"><NewClassForm /></div>
+      <div className="mb-3"><NewClassForm presets={presets} /></div>
       <Link
         href="/teacher/workout"
         className="flex items-center justify-center w-full bg-surface2 text-text border border-border rounded-lg px-6 py-3 font-body text-[15px] font-medium no-underline mb-6 hover:border-accent"
@@ -113,6 +114,12 @@ export default async function TeacherHome() {
           </div>
         </details>
       )}
+
+      <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mt-10 mb-1">Presets</div>
+      <div className="text-muted text-[14px] mb-4">
+        Named sets of settings you can start a class or session from, or apply to every class at once.
+      </div>
+      <PresetList presets={presets} />
 
       <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mt-10 mb-1">My Workouts</div>
       <div className="text-muted text-[14px] mb-4">
