@@ -1,13 +1,14 @@
 # STATE.md — where PE.AI is right now
 
-_Updated 2026-10-26. Overwrite in place at every handoff._
+_Updated 2026-10-27. Overwrite in place at every handoff._
 
 ## Status
 Live in production (`main` @ e8aa715, PR #7 merged 2026-10-27): mandatory Mitty
 Google sign-in for everyone, no teacher keys, student /me home with up to 3
 personal classes, /c/CODE workout page (records class membership), /classes/CODE
-owner page with roster, admin assignment of pre-account classes, name-free AI
-prompts. Ryan (ryantseng29@mittymonarch.com) is `admin`.
+owner page with roster, name-free AI prompts. Ryan's Mitty student account is
+`admin`. The 20 pre-account (unowned) classes were deleted 2026-10-27 after a
+local backup (see DECISIONS); every class now has an owner.
 
 Verified in production signed out: every page redirects to /login with the
 right `next`, old /?code= and /teacher/CODE links forward, API routes 401,
@@ -47,13 +48,13 @@ and sw.js served; 404 for bad ids.
 ## Not verified yet
 - Real phone: install to home screen, wake lock, vibration/chime, share sheet.
 - Keep-alive cron first run (12:00 UTC 2026-10-27).
-- Test data: class HMJ8TW has several smoke-test workouts and one 4-star review.
 
 ## Next action
 1. Ryan tests production signed in (student home, personal class, join a
-   class, teacher dashboard, roster, admin assign); fix anything he finds.
-2. Assign the pre-account classes to real teachers (admin box on
-   /teacher); the PE teacher signs in once first.
+   class, teacher dashboard, roster); fix anything he finds.
+2. Decide whether to remove the now-dead admin-assign code (admin box on
+   /teacher, `/api/admin/assign-class`, `AssignClassForm`) and the "ask the
+   admin to assign it" copy on /teacher and /classes/CODE not-found.
 3. Ask the PE teacher / Mitty tech office whether student sign-in needs a
    school data agreement (open recommendation from 2026-10-27).
 4. UI revamp resumes only on Ryan's green light (branch `ui-revamp`).
