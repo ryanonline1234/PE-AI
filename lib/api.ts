@@ -138,3 +138,15 @@ export const apiUpdateClass = (code: string, patch: { label?: string; archived?:
 
 export const apiFileWorkout = (code: string, workoutId: string, filed: boolean) =>
   postJson<{ ok: true; filed: boolean }>("/api/class-workouts", { code, workoutId, filed });
+
+// ── Sessions (teacher classes; docs/02-sessions.md) ───────────
+
+/** Plan a session on `date`, copying the class defaults or the session on `copyFrom`. */
+export const apiCreateSession = (code: string, date: string, copyFrom: string | null) =>
+  postJson<{ date: string }>("/api/class-sessions", { code, date, copyFrom });
+
+export const apiUpdateSession = (code: string, date: string, patch: { config?: ClassConfig; name?: string }) =>
+  postJson<{ ok: true }>("/api/class-sessions", { code, date, ...patch }, "PATCH");
+
+export const apiDeleteSession = (code: string, date: string) =>
+  postJson<{ ok: true }>("/api/class-sessions", { code, date }, "DELETE");

@@ -222,7 +222,9 @@ export function GoMode({ workout, onClose, onFinish }: {
         <div className="flex-1 flex flex-col justify-center text-center px-2">
           <div className="text-[12px] font-semibold tracking-[2px] uppercase text-accent mb-3">Workout complete</div>
           <div className={cn(big, "text-[clamp(56px,16vw,120px)] text-accent mb-2")}>{formatClock(elapsed)}</div>
-          <div className="text-muted text-[16px]">minutes on the floor · {workout.totalCalories} kcal planned</div>
+          <div className="text-muted text-[16px]">
+            minutes on the floor{workout.totalCalories ? ` · ≈${workout.totalCalories} kcal (estimate)` : ""}
+          </div>
         </div>
         <div className="flex gap-3">
           <button type="button" onClick={onClose} className={btnGhost}>Close</button>

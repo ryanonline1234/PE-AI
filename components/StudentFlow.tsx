@@ -14,9 +14,12 @@ import { WorkoutScreen } from "@/components/WorkoutScreen";
 
 type View = "form" | "questions" | "workout";
 
-export function StudentFlow({ code, label, config, firstName, backHref }: {
+export function StudentFlow({ code, label, sessionName, config, firstName, backHref }: {
   code: string;
   label: string;
+  /** Today's session, when the teacher named it. */
+  sessionName?: string | null;
+  /** Today's settings: the session's, or the class defaults. Display only; the server re-resolves. */
   config: ClassConfig;
   firstName: string;
   backHref: string;
@@ -168,7 +171,7 @@ export function StudentFlow({ code, label, config, firstName, backHref }: {
         Let&apos;s Build Your Workout
       </div>
       <div className="text-muted text-[15px] mb-8">
-        <strong className="text-accent">{label}</strong> · {config.duration} min · {config.minCalories}+ kcal · {config.intensity} intensity
+        <strong className="text-accent">{label}</strong>{sessionName ? ` · ${sessionName}` : ""} · {config.duration} min · {config.intensity} intensity
       </div>
 
       <Card>

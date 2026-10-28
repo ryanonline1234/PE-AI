@@ -128,7 +128,8 @@ export function WorkoutScreen({
         )}
         <div className="flex gap-7 flex-wrap">
           {[
-            [workout.totalCalories || "–", "Calories"],
+            // An estimate, not a target (DECISIONS 2026-10-28).
+            [workout.totalCalories ? `≈${workout.totalCalories}` : "–", "Est. kcal"],
             [workout.totalDuration ? `${workout.totalDuration}m` : "–", "Duration"],
             [workout.exercises.length, "Exercises"],
           ].map(([num, lbl]) => (
@@ -185,7 +186,6 @@ export function WorkoutScreen({
                       {ex.sets} × {ex.reps}
                     </div>
                     <div className="text-[12px] text-muted mt-0.5">Rest {ex.rest}</div>
-                    <div className="text-[12px] text-accent2 mt-0.5">{ex.calories} kcal</div>
                   </div>
                   <div className={cn("text-muted transition-transform duration-[250ms]", isExpanded ? "rotate-180" : "rotate-0")}>
                     ▾

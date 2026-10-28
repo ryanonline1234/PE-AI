@@ -18,7 +18,6 @@ export interface AskQuestion {
 
 export interface ClassConfig {
   duration: number;
-  minCalories: number;
   // Free-text in the teacher UI (a textarea). save-class still clamps a legacy
   // "none"|"basic"|"gym" set server-side, so the stored value may be narrower —
   // typed `string` to cover both the client free-text and the clamped value.
@@ -30,6 +29,18 @@ export interface ClassConfig {
   summary?: string;
   /** Answers the teacher gave during the AI check. Fed to every generation. */
   clarifications?: QA[];
+}
+
+/**
+ * One dated session of a teacher class: that day's settings. Students get
+ * today's session, or the class's own config on a day without one
+ * (docs/02-sessions.md).
+ */
+export interface ClassSession {
+  id: string;
+  session_date: string; // YYYY-MM-DD, the school's calendar day
+  name: string | null;
+  config: ClassConfig;
 }
 
 /** Response of /api/clarify-class. */
@@ -80,6 +91,8 @@ export interface GenerateWorkoutInput {
   previousId?: string | null;
   /** Owner preview: a typical student; saved to the owner's workouts. */
   sample?: boolean;
+  /** Owner preview from a session's page: that session's date. */
+  sessionDate?: string;
 }
 
 export interface SaveClassResponse {

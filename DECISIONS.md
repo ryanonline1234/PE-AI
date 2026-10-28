@@ -213,7 +213,10 @@ different settings. Design in `docs/02-sessions.md`; Ryan went with the recs:
 - **No calorie target.** The AI estimates honestly for a typical high school
   student; the workout shows the total as an estimate and no longer shows
   per-exercise kcal, which looked precise and isn't. The JSON Lines format is
-  unchanged.
+  unchanged. Saved summaries and AI-check answers that state a target lose
+  those sentences (`withoutCalorieTargets`), because the model anchored on
+  them even with an "ignore it" rule: 260 and 320 kcal vs 200 and 200
+  without (two runs each); 220–240 after the fix.
 - **Phasing.** PR A = sessions + the estimate. PR B = teacher planning help
   (sport consult, allowlisted research with sources) that writes a brief onto
   a session. PR C = a student's own sport brief (no health details stored)

@@ -29,6 +29,14 @@ After this change:
   per-exercise numbers to sanity-check the total). The prompt now says there
   is no target: estimate honestly for a typical high school student, don't
   inflate, and ignore any calorie target an older saved summary mentions.
+- That prompt line alone wasn't enough. Six of the ten classes had a saved
+  summary stating a target, and the model anchored on it (Haiku 5.5, two
+  runs each: 200 and 200 kcal on a clean 30-minute cardio setup, 260 and 320
+  with "at least 400 calories" in the summary). So `withoutCalorieTargets`
+  drops summary sentences and AI-check answers that mention calories: in
+  `clampConfig` (every save), in the prompt (classes nobody re-saves), and in
+  the editor (so the teacher doesn't see a stale target). After the fix both
+  setups gave 220–240 kcal. The stored text changes only on the next save.
 - Display: total only, as "≈ 180" labeled "Est. kcal" on the workout and
   "≈ 180 kcal (estimate)" on the Go mode finish screen. The per-exercise kcal
   line is dropped: it looked precise and isn't.
@@ -69,7 +77,7 @@ Every saved workout records its `session_id` (null = defaults).
 - `/classes/CODE`: a **Sessions** section above the settings. It shows
   today's session or "No session today: students get the default settings",
   the upcoming sessions, and the last two weeks of past ones. **+ Plan a
-  session** takes a date (defaulting to the next day without one) and what
+  session** takes a date (defaulting to the next weekday without one) and what
   to copy from: the defaults or an earlier session. The settings editor below
   is retitled **Default settings**.
 - `/classes/CODE/s/YYYY-MM-DD`: one session. Name, the same settings editor,

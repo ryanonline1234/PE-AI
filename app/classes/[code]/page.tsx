@@ -4,10 +4,12 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { Card, CardTitle, Layout } from "@/components/ui";
 import { ClassEditor } from "@/components/ClassEditor";
-import { ArchiveToggle, CopyButton, FileToggle, LabelEditor } from "@/components/teacher/TeacherControls";
+import { ArchiveToggle, CopyButton, FileToggle, LabelEditor, PlanSessionForm } from "@/components/teacher/TeacherControls";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
+import { addDays, schoolDate, weekdayOf } from "@/lib/time";
+import type { ClassSession } from "@/lib/types";
 import {
-  classLabel, dayKey, dayLabel, loadClass, loadFiling, loadReviews, loadRoster, loadWorkouts, loadWorkoutsByIds, timeLabel,
+  classLabel, dayKey, dayLabel, loadClass, loadFiling, loadReviews, loadRoster, loadSessions, loadWorkouts, loadWorkoutsByIds, timeLabel,
   type WorkoutRow,
 } from "@/lib/teacher-data";
 
@@ -28,12 +30,14 @@ export default async function OwnerClassPage({ params }: { params: Params }) {
   const cls = await loadClass(code);
   if (!cls || cls.owner_id !== account.id) notFound();
   const personal = cls.kind === "personal";
+  const today = schoolDate();
 
-  const [recent, reviews, filing, roster] = await Promise.all([
+  const [recent, reviews, filing, roster, sessions] = await Promise.all([
     loadWorkouts({ classCodes: [code], sinceDays: personal ? 90 : 14, limit: 300 }),
     personal ? Promise.resolve([]) : loadReviews([code], 14),
     loadFiling([cls]),
     personal ? Promise.resolve([]) : loadRoster(cls.id),
+    personal ? Promise.resolve([]) : loadSessions(cls.id, addDays(today, -14)),
   ]);
   const filed = await loadWorkoutsByIds([...filing.keys()]);
   const filedIds = new Set(filed.map((w) => w.id));
@@ -46,7 +50,19 @@ export default async function OwnerClassPage({ params }: { params: Params }) {
     byDay.set(k, [...(byDay.get(k) ?? []), w]);
   }
 
-  const today = dayKey(new Date().toISOString());
+  // Sessions (teacher classes): today's, the ones coming up, the last two weeks.
+  const todaySession = sessions.find((x) => x.session_date === today) ?? null;
+  const upcoming = sessions.filter((x) => x.session_date > today);
+  const past = sessions.filter((x) => x.session_date < today).reverse();
+  const sessionNames = new Map(sessions.map((x) => [x.id, x.name || "Untitled session"]));
+  const taken = new Set(sessions.map((x) => x.session_date));
+  let planDate = today; // the next school day (Mon–Fri) without a session
+  while (taken.has(planDate) || weekdayOf(planDate) === 0 || weekdayOf(planDate) === 6) planDate = addDays(planDate, 1);
+  const copyOptions = [...sessions].reverse().map((x) => ({
+    value: x.session_date,
+    label: `${dayLabel(x.session_date)} · ${x.name || "Untitled session"}`,
+  }));
+
   const perStudent = new Map<string, { today: number; total: number; last: string | null }>();
   for (const w of studentRuns) {
     if (!w.created_by) continue;
@@ -90,6 +106,37 @@ export default async function OwnerClassPage({ params }: { params: Params }) {
             This class is archived. It&apos;s hidden from your list{personal ? "" : ", and students can still use the code"}.
           </div>
         </Card>
+      )}
+
+      {!personal && (
+        <section className="mb-8">
+          <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mb-1">Sessions</div>
+          <div className="text-muted text-[14px] mb-4">
+            Each day can have its own settings. On a day without a session, students get the default settings below.
+          </div>
+          <div className="flex flex-col gap-2">
+            {todaySession ? (
+              <SessionLine s={todaySession} code={code} highlight />
+            ) : (
+              <div className="border border-dashed border-border rounded-xl px-4 py-3 text-[14px] text-muted">
+                No session today: students get the default settings.
+              </div>
+            )}
+            {upcoming.map((x) => <SessionLine key={x.id} s={x} code={code} />)}
+          </div>
+          <Card className="mt-4">
+            <CardTitle>Plan a session</CardTitle>
+            <PlanSessionForm code={code} defaultDate={planDate} minDate={today} copyOptions={copyOptions} />
+          </Card>
+          {past.length > 0 && (
+            <details>
+              <summary className="text-muted text-[13px] cursor-pointer">Past sessions ({past.length})</summary>
+              <div className="flex flex-col gap-2 mt-2">
+                {past.map((x) => <SessionLine key={x.id} s={x} code={code} />)}
+              </div>
+            </details>
+          )}
+        </section>
       )}
 
       <ClassEditor code={code} initialConfig={cls.config} kind={cls.kind} />
@@ -146,16 +193,19 @@ export default async function OwnerClassPage({ params }: { params: Params }) {
         {byDay.size === 0 ? (
           <div className="text-muted text-[14px]">{personal ? "No workouts yet. Tap Start a workout." : "No student workouts yet. Share the code to get started."}</div>
         ) : (
-          [...byDay.entries()].map(([day, list]) => (
+          [...byDay.entries()].map(([day, list]) => {
+            const sessionName = list.map((w) => w.session_id && sessionNames.get(w.session_id)).find(Boolean);
+            return (
             <div key={day} className="mb-5">
               <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-2">
-                {dayLabel(day)} · {list.length} workout{list.length === 1 ? "" : "s"}
+                {dayLabel(day)}{sessionName ? ` · ${sessionName}` : ""} · {list.length} workout{list.length === 1 ? "" : "s"}
               </div>
               <div className="flex flex-col gap-2">
                 {list.map((w) => <WorkoutLine key={w.id} w={w} code={code} ownerId={account.id} filed={filedIds.has(w.id)} />)}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </section>
 
@@ -211,5 +261,22 @@ function WorkoutLine({ w, code, ownerId, filed, showDay = false }: {
       </div>
       <FileToggle code={code} workoutId={w.id} filed={filed} />
     </div>
+  );
+}
+
+function SessionLine({ s, code, highlight = false }: { s: ClassSession; code: string; highlight?: boolean }) {
+  return (
+    <Link
+      href={`/classes/${code}/s/${s.session_date}`}
+      className={`flex items-center justify-between gap-3 bg-surface border rounded-xl px-4 py-3 no-underline text-text hover:border-accent ${highlight ? "border-accent" : "border-border"}`}
+    >
+      <div className="min-w-0">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-muted">{dayLabel(s.session_date)}</div>
+        <div className="font-semibold text-[15px] truncate">{s.name || "Untitled session"}</div>
+      </div>
+      <div className="text-[12px] text-muted text-right shrink-0">
+        {s.config.duration} min · {s.config.intensity} · {s.config.focus}
+      </div>
+    </Link>
   );
 }
