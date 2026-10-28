@@ -39,3 +39,41 @@ export function formatDateInTimeZone(tz: string, date: Date = new Date()): strin
     timeZone: tz, weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 }
+
+/** The calendar date in `tz` as YYYY-MM-DD. */
+export function dateKeyInTimeZone(tz: string, date: Date = new Date()): string {
+  const p: Record<string, string> = {};
+  const fmt = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
+  for (const part of fmt.formatToParts(date)) p[part.type] = part.value;
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+// ── Session dates ─────────────────────────────────────────────
+// Sessions are keyed by the school's calendar date (docs/02-sessions.md). The
+// server decides "today" in the school's zone, never the browser's.
+
+export const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The school's calendar date for an instant (default: now), YYYY-MM-DD. */
+export function schoolDate(date: Date = new Date()): string {
+  return dateKeyInTimeZone(DEFAULT_TIME_ZONE, date);
+}
+
+/** A real calendar date written as YYYY-MM-DD. */
+export function isDateKey(v: unknown): v is string {
+  if (typeof v !== "string" || !DATE_KEY_RE.test(v)) return false;
+  const d = new Date(`${v}T12:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
+
+/** `key` moved by `days` calendar days (noon UTC, so DST never shifts the date). */
+export function addDays(key: string, days: number): string {
+  const d = new Date(`${key}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** 0 = Sunday … 6 = Saturday, for a YYYY-MM-DD key. */
+export function weekdayOf(key: string): number {
+  return new Date(`${key}T12:00:00Z`).getUTCDay();
+}

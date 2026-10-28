@@ -34,6 +34,12 @@ writes to the production database — that's fine for test classes, don't bulk-e
   `proxy.ts` (session refresh for pages). Pages READ through RLS; API routes WRITE
   with the service role after an explicit owner/access check. No teacher keys.
 - **Class config is clamped server-side** (`lib/class-config.ts`); nobody can widen it.
+- **Sessions** (`docs/02-sessions.md`): a teacher class has dated sessions
+  (`class_sessions`, one per school date in America/Los_Angeles) with their own
+  config; the class's own config is its default settings. Generation resolves
+  the session on the server (`app/api/generate-workout`, step 4c) and saves
+  `workouts.session_id`. The prompt lives in `lib/workout-prompt.ts`. No calorie
+  targets: the AI estimates.
 - **Student free text is sanitized** before it reaches the model, and **names never
   reach the model** (workout prompt and teacher report are name-free).
 - **The AI talks back.** Teacher check (`/api/clarify-class`) stores a confirmed

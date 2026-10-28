@@ -4,7 +4,7 @@
 // API route, then refreshes the server-rendered page so lists stay in sync.
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { apiCreateClass, apiFileWorkout, apiUpdateClass } from "@/lib/api";
+import { apiCreateClass, apiCreateSession, apiDeleteSession, apiFileWorkout, apiUpdateClass, apiUpdateSession } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const input = "w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none";
@@ -216,5 +216,122 @@ export function FileToggle({ code, workoutId, filed }: { code: string; workoutId
     >
       {on ? "✓ Filed" : "+ File"}
     </button>
+  );
+}
+
+// ── Sessions (docs/02-sessions.md) ────────────────────────────
+
+/** Pick a date and what to copy from, then open the new session. */
+export function PlanSessionForm({ code, defaultDate, minDate, copyOptions }: {
+  code: string;
+  defaultDate: string;
+  minDate: string;
+  /** Earlier sessions to copy from: value = their date. The defaults are always offered. */
+  copyOptions: { value: string; label: string }[];
+}) {
+  const router = useRouter();
+  const [date, setDate] = useState(defaultDate);
+  const [copyFrom, setCopyFrom] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!date) return;
+    setBusy(true); setErr("");
+    try {
+      await apiCreateSession(code, date, copyFrom || null);
+      router.push(`/classes/${code}/s/${date}`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
+  }
+  return (
+    <form onSubmit={submit}>
+      <div className="flex gap-2.5 flex-wrap">
+        <input
+          type="date"
+          className={cn(input, "flex-1 min-w-[150px] [color-scheme:dark]")}
+          value={date}
+          min={minDate}
+          onChange={(e) => setDate(e.target.value)}
+          aria-label="Session date"
+          required
+        />
+        <select
+          className={cn(input, "flex-1 min-w-[150px]")}
+          value={copyFrom}
+          onChange={(e) => setCopyFrom(e.target.value)}
+          aria-label="Start from"
+        >
+          <option value="">Start from the default settings</option>
+          {copyOptions.map((o) => <option key={o.value} value={o.value}>Copy {o.label}</option>)}
+        </select>
+        <button type="submit" className={btn} disabled={busy || !date}>{busy ? "Planning…" : "+ Plan"}</button>
+      </div>
+      <ErrorLine msg={err} />
+    </form>
+  );
+}
+
+export function SessionNameEditor({ code, date, name }: { code: string; date: string; name: string }) {
+  const router = useRouter();
+  const [value, setValue] = useState(name);
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState("");
+  const dirty = value.trim() !== name;
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try {
+      await apiUpdateSession(code, date, { name: value });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form onSubmit={save}>
+      <div className="flex gap-2.5 items-center">
+        <input
+          className={cn(input, "font-display text-[22px] font-bold uppercase tracking-[0.5px] py-2")}
+          value={value}
+          onChange={(e) => setValue(e.target.value.slice(0, 60))}
+          placeholder="Name it, e.g. Volleyball conditioning"
+          aria-label="Session name"
+        />
+        <button type="submit" className={ghost} disabled={busy || !dirty}>{saved ? "✓ Saved" : "Rename"}</button>
+      </div>
+      <ErrorLine msg={err} />
+    </form>
+  );
+}
+
+export function DeleteSessionButton({ code, date }: { code: string; date: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function remove() {
+    if (!window.confirm("Delete this session? Students get the default settings that day. Workouts already made stay.")) return;
+    setBusy(true); setErr("");
+    try {
+      await apiDeleteSession(code, date);
+      router.push(`/classes/${code}`);
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="text-right">
+      <button type="button" onClick={remove} className={ghost} disabled={busy}>{busy ? "Deleting…" : "Delete session"}</button>
+      <ErrorLine msg={err} />
+    </div>
   );
 }

@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
 Return JSON with:
 - "summary": 2-4 short sentences addressed to ${audience}. Say concretely what the workouts will look like: length, intensity, focus, which equipment gets used, and how you will apply the custom instructions. State any assumption you are making.
-- "questions": ${lastRound ? "an empty array. Do not ask anything this round; fold the answers so far into the summary." : `0-3 questions, ONLY where the setup is ambiguous, conflicting, or unrealistic in a way that would change the workouts. Good reasons to ask: equipment that could mean different things ("weights": dumbbells or machines?), instructions with two plausible readings, where students work out when the instructions depend on it, a calorie target that is not realistic for the duration and intensity. Do not ask about anything already clear, anything answered under PREVIOUS ANSWERS, or nice-to-have detail. If the setup is clear, return an empty array. Each question is under 15 words and has 2-4 tap-able answer options, each under 6 words; the app adds its own free-text option.`}`;
+- "questions": ${lastRound ? "an empty array. Do not ask anything this round; fold the answers so far into the summary." : `0-3 questions, ONLY where the setup is ambiguous, conflicting, or unrealistic in a way that would change the workouts. Good reasons to ask: equipment that could mean different things ("weights": dumbbells or machines?), instructions with two plausible readings, where students work out when the instructions depend on it, more content than fits the duration. Do not ask about anything already clear, anything answered under PREVIOUS ANSWERS, or nice-to-have detail. If the setup is clear, return an empty array. Each question is under 15 words and has 2-4 tap-able answer options, each under 6 words; the app adds its own free-text option.`}`;
 
   const previous = (cfg.clarifications ?? []).map((qa) => `- Q: ${qa.question}\n  A: ${qa.answer}`).join("\n");
   const user = `CLASS SETUP:
@@ -84,7 +84,7 @@ ${previous || "none"}`;
     const message = await client.messages.create({
       model: MODEL,
       max_tokens: 1500,
-      // Feasibility checks (calories vs minutes) benefit from a little reasoning;
+      // Feasibility checks (content vs minutes) benefit from a little reasoning;
       // the teacher waits once per change, not per student.
       output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
       system,

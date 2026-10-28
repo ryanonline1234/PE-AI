@@ -2,8 +2,8 @@
 // client, so RLS limits it to what the caller may see: classes they own or
 // joined, their own workouts, and (for owners) their class's workouts and roster.
 import { createUserClient } from "@/lib/supabase-auth";
-import { DEFAULT_TIME_ZONE } from "@/lib/time";
-import type { ClassConfig } from "@/lib/types";
+import { dateKeyInTimeZone, DEFAULT_TIME_ZONE } from "@/lib/time";
+import type { ClassConfig, ClassSession } from "@/lib/types";
 
 export const TZ = DEFAULT_TIME_ZONE;
 
@@ -25,20 +25,28 @@ export interface WorkoutRow {
   created_by: string | null;
   created_at: string;
   title: string | null;
+  session_id: string | null;
 }
 
 export const classLabel = (c: { label: string | null; code: string }) => c.label || `Class ${c.code}`;
 
 export function dayKey(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ }); // YYYY-MM-DD
+  return dateKeyInTimeZone(TZ, new Date(iso)); // YYYY-MM-DD
 }
 
 export function dayLabel(key: string): string {
   const today = dayKey(new Date().toISOString());
   const yesterday = dayKey(new Date(Date.now() - 86_400_000).toISOString());
+  const tomorrow = dayKey(new Date(Date.now() + 86_400_000).toISOString());
   if (key === today) return "Today";
   if (key === yesterday) return "Yesterday";
+  if (key === tomorrow) return "Tomorrow";
   return new Date(`${key}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+/** "Thursday, October 29" for a YYYY-MM-DD key. */
+export function longDayLabel(key: string): string {
+  return new Date(`${key}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
 }
 
 export function timeLabel(iso: string): string {
@@ -64,7 +72,7 @@ export async function loadClass(code: string): Promise<ClassRow | null> {
   return (data as ClassRow | null) ?? null;
 }
 
-const WORKOUT_COLS = "id, class_code, student_name, created_by, created_at, title:workout->>title";
+const WORKOUT_COLS = "id, class_code, student_name, created_by, created_at, session_id, title:workout->>title";
 
 export async function loadWorkouts(opts: { classCodes?: string[]; createdBy?: string; sinceDays?: number; limit?: number }): Promise<WorkoutRow[]> {
   const supabase = await createUserClient();
@@ -161,4 +169,32 @@ export async function loadRoster(classId: string): Promise<RosterRow[]> {
       name: (p?.display_name as string | undefined) || email.split("@")[0] || "Student",
     };
   });
+}
+
+// ── Sessions (RLS: the class owner reads) ─────────────────────
+
+const SESSION_COLS = "id, session_date, name, config";
+
+/** A class's sessions from `fromDate` on, oldest first. */
+export async function loadSessions(classId: string, fromDate: string): Promise<ClassSession[]> {
+  const supabase = await createUserClient();
+  const { data } = await supabase
+    .from("class_sessions")
+    .select(SESSION_COLS)
+    .eq("class_id", classId)
+    .gte("session_date", fromDate)
+    .order("session_date", { ascending: true })
+    .limit(200);
+  return (data ?? []) as ClassSession[];
+}
+
+export async function loadSession(classId: string, date: string): Promise<ClassSession | null> {
+  const supabase = await createUserClient();
+  const { data } = await supabase
+    .from("class_sessions")
+    .select(SESSION_COLS)
+    .eq("class_id", classId)
+    .eq("session_date", date)
+    .maybeSingle();
+  return (data as ClassSession | null) ?? null;
 }

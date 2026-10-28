@@ -1,14 +1,15 @@
 "use client";
 
 // The class settings editor: parameters, the AI check, "what the AI knows",
-// save, sample preview, and today's report. Used on /classes/[code] by the
-// class's owner: a teacher (class) or a student (personal class).
+// save, sample preview, and today's report. Used by the class's owner on
+// /classes/[code] (a teacher class's default settings, or a student's personal
+// class) and on /classes/[code]/s/[date] (one session's settings).
 //
 // Remount it (React `key`) when the class changes; it owns its own form state.
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { apiClarifyClass, apiGenerateReport, apiGenerateWorkoutStream, apiSaveClass } from "@/lib/api";
-import { configSignature, DEFAULT_CONFIG } from "@/lib/class-config";
+import { apiClarifyClass, apiGenerateReport, apiGenerateWorkoutStream, apiSaveClass, apiUpdateSession } from "@/lib/api";
+import { configSignature, DEFAULT_CONFIG, withoutCalorieTargets } from "@/lib/class-config";
 import { applyEvent } from "@/lib/workout-stream";
 import { EMPTY_WORKOUT, type ClassCheck, type ClassConfig, type QA, type ReportMeta, type Workout } from "@/lib/types";
 import { QuestionList, collectAnswers, NO_ANSWERS, type Answers } from "@/components/QuestionList";
@@ -22,14 +23,17 @@ interface CheckState extends ClassCheck {
 }
 
 
-export function ClassEditor({ code, initialConfig, kind }: {
+export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
   code: string;
   initialConfig: ClassConfig;
   /** "personal": a student's own training class — no sample preview, no class report. */
   kind: "class" | "personal";
+  /** Editing one session (YYYY-MM-DD) instead of the class's default settings. */
+  sessionDate?: string;
 }) {
   const personal = kind === "personal";
-  const start = { ...DEFAULT_CONFIG, ...initialConfig };
+  // Older summaries still state a calorie target; don't show one that no longer applies.
+  const start = withoutCalorieTargets({ ...DEFAULT_CONFIG, ...initialConfig });
   const [config, setConfig] = useState<ClassConfig>(start);
   // A saved summary describes exactly the settings it was saved with.
   const [checkedSig, setCheckedSig] = useState(start.summary ? configSignature(start) : "");
@@ -62,9 +66,14 @@ export function ClassEditor({ code, initialConfig, kind }: {
     let ok = false;
     setSaving(true); setError(""); setSaveMsg("");
     try {
-      await apiSaveClass(code, toSave);
+      if (sessionDate) await apiUpdateSession(code, sessionDate, { config: toSave });
+      else await apiSaveClass(code, toSave);
       setConfig(toSave);
-      setSaveMsg(personal ? "Saved! Your next workout will use these settings." : "Saved! Share the class code with your students.");
+      setSaveMsg(
+        personal ? "Saved! Your next workout will use these settings."
+        : sessionDate ? "Saved! Students get these settings that day."
+        : "Saved! Students get these on days without a session."
+      );
       ok = true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -139,7 +148,7 @@ export function ClassEditor({ code, initialConfig, kind }: {
     let failed = "";
     try {
       await apiGenerateWorkoutStream(
-        { code, fitnessLevel: "moderate", limitations: "", preferences: "", regenerateFeedback: "", sample: true },
+        { code, fitnessLevel: "moderate", limitations: "", preferences: "", regenerateFeedback: "", sample: true, sessionDate },
         (ev) => {
           if (ev.kind === "error") failed = ev.message;
           else if (ev.kind === "done") setSampleId(ev.id);
@@ -181,18 +190,16 @@ export function ClassEditor({ code, initialConfig, kind }: {
   return (
     <>
       <Card>
-        <CardTitle>Workout Parameters</CardTitle>
+        <CardTitle>{personal ? "Workout Parameters" : sessionDate ? "Session Settings" : "Default Settings"}</CardTitle>
+        {!personal && !sessionDate && (
+          <div className="text-muted text-[13px] leading-[1.5] -mt-3 mb-5">
+            Students get these on days without a session. New sessions start from them.
+          </div>
+        )}
 
         <Field label={`Duration — ${config.duration} min`}>
           <input type="range" min="10" max="90" step="5" value={config.duration}
             onChange={e => cfgSet("duration", +e.target.value)}
-            className="w-full accent-accent"
-          />
-        </Field>
-
-        <Field label={`Min Calories to Burn — ${config.minCalories} kcal`}>
-          <input type="range" min="50" max="600" step="25" value={config.minCalories}
-            onChange={e => cfgSet("minCalories", +e.target.value)}
             className="w-full accent-accent"
           />
         </Field>
@@ -302,7 +309,8 @@ export function ClassEditor({ code, initialConfig, kind }: {
         </Card>
       ) : (
         <BtnPrimary onClick={onSaveClick} disabled={saving || checking}>
-          {checking ? "AI is reading your setup…" : saving ? "Saving…" : "Save Class Settings"}
+          {checking ? "AI is reading your setup…" : saving ? "Saving…"
+            : personal ? "Save Class Settings" : sessionDate ? "Save Session Settings" : "Save Default Settings"}
         </BtnPrimary>
       )}
       {checkError && (
@@ -352,8 +360,8 @@ export function ClassEditor({ code, initialConfig, kind }: {
       )}
       {sampleError && <Alert type="error">{sampleError}</Alert>}
 
-      {/* Today's report (teacher classes only) */}
-      {!personal && <div className="mt-8">
+      {/* Today's report (teacher classes only, on the class page) */}
+      {!personal && !sessionDate && <div className="mt-8">
         <div className="font-display text-[22px] font-bold uppercase tracking-[1px] mb-3">
           Today&apos;s Workout Report
         </div>
