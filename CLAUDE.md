@@ -47,6 +47,10 @@ writes to the production database — that's fine for test classes, don't bulk-e
   source as an enum (no invented links). A student's own brief is in
   `student_briefs`, cleaned by `lib/student-brief.ts` (no health details), and
   goes in the student's message, not the system prompt. Generation stays tool-free.
+- **Teachers' own workouts** (`/teacher/workout`, DECISIONS 2026-10-28): a
+  teacher's one personal class is their own-workout space; inline settings in
+  `generate-workout` apply only to the owner of a personal class. Equipment is
+  chips + Other over the same text field (`lib/equipment.ts`).
 - **Student free text is sanitized** before it reaches the model, and **names never
   reach the model** (workout prompt and teacher report are name-free).
 - **The AI talks back.** Teacher check (`/api/clarify-class`) stores a confirmed

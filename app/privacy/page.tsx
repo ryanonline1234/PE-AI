@@ -56,7 +56,8 @@ export default function PrivacyPage() {
               you plan store the same settings for their date.</li>
             <li><strong>Research:</strong> topics you search are sent to Anthropic, whose web search looks only at the
               trusted sites the app lists. Results aren&apos;t stored unless you pin them.</li>
-            <li><strong>Your workouts:</strong> sample workouts you preview, and which classes you file workouts under.</li>
+            <li><strong>Your workouts:</strong> sample workouts you preview, workouts you make for yourself (with the
+              settings you used last), and which classes you file workouts under.</li>
           </ul>
         </section>
 

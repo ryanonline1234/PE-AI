@@ -11,10 +11,13 @@ import { MAX_PERSONAL_CLASSES } from "@/lib/class-access";
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const newCode = () => Array.from({ length: 6 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
 const cleanLabel = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 60) : "");
+const SOLO_LABEL = "Just me";
 
 /**
  * Create a class owned by the caller. Teachers (and admins) get a regular class
  * students can join; students get a personal class only they can use.
+ * `solo: true` from a teacher returns their own-workout space instead: their
+ * one personal class, created on first use (DECISIONS 2026-10-28).
  */
 export async function POST(request: NextRequest) {
   if (!verifySecret(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,8 +31,22 @@ export async function POST(request: NextRequest) {
   ]);
   if (limited) return rateLimitedResponse(limited);
 
-  const kind = isTeacherAccount(account) ? "class" : "personal";
-  if (kind === "personal") {
+  if (body.solo === true && isTeacherAccount(account)) {
+    // A teacher can't otherwise make a personal class, so theirs is this space.
+    const { data: existing } = await supabase
+      .from("pe_classes")
+      .select("code")
+      .eq("owner_id", account.id)
+      .eq("kind", "personal")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (existing) return withCookies(NextResponse.json({ code: existing.code }));
+  }
+
+  const solo = body.solo === true && isTeacherAccount(account);
+  const kind = isTeacherAccount(account) && !solo ? "class" : "personal";
+  if (kind === "personal" && !solo) {
     const { count } = await supabase
       .from("pe_classes")
       .select("id", { count: "exact", head: true })
@@ -51,7 +68,7 @@ export async function POST(request: NextRequest) {
       kind,
       config: clampConfig({}),
       owner_id: account.id,
-      label: cleanLabel(body.label) || (kind === "personal" ? "My Training" : null),
+      label: solo ? SOLO_LABEL : cleanLabel(body.label) || (kind === "personal" ? "My Training" : null),
     });
     if (!error) return withCookies(NextResponse.json({ code }));
     if (error.code !== "23505") {

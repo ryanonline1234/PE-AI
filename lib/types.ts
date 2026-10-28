@@ -117,6 +117,8 @@ export interface GenerateWorkoutInput {
   sample?: boolean;
   /** Owner preview from a session's page: that session's date. */
   sessionDate?: string;
+  /** The owner of a personal class picking settings on the spot (a teacher's own workout). */
+  config?: ClassConfig;
 }
 
 export interface SaveClassResponse {

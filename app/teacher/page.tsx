@@ -16,7 +16,10 @@ export default async function TeacherHome() {
   if (!isTeacherAccount(account)) redirect("/me");
 
   // RLS returns classes this teacher owns (and any they joined as a student).
-  const classes = (await loadClasses()).filter((c) => c.owner_id === account.id);
+  // Their one personal class is their own-workout space, not a class to list.
+  const owned = (await loadClasses()).filter((c) => c.owner_id === account.id);
+  const classes = owned.filter((c) => c.kind === "class");
+  const space = owned.find((c) => c.kind === "personal");
   const codes = classes.map((c) => c.code);
   const [recent, reviews, mine, filing] = await Promise.all([
     loadWorkouts({ classCodes: codes, sinceDays: 30, limit: 1000 }),
@@ -40,6 +43,7 @@ export default async function TeacherHome() {
   const archived = classes.filter((c) => c.archived);
   const chipClasses = active.map((c) => ({ code: c.code, label: classLabel(c) }));
   const labelFor = new Map(classes.map((c) => [c.code, classLabel(c)]));
+  if (space) labelFor.set(space.code, "yourself");
 
   return (
     <Layout>
@@ -48,7 +52,13 @@ export default async function TeacherHome() {
       <div className="font-display text-[42px] font-black uppercase tracking-[-1px] leading-none mb-2">Your Classes</div>
       <div className="text-muted text-[15px] mb-6">Each class has its own code. Students sign in with their Mitty account and enter it.</div>
 
-      <div className="mb-6"><NewClassForm /></div>
+      <div className="mb-3"><NewClassForm /></div>
+      <Link
+        href="/teacher/workout"
+        className="flex items-center justify-center w-full bg-surface2 text-text border border-border rounded-lg px-6 py-3 font-body text-[15px] font-medium no-underline mb-6 hover:border-accent"
+      >
+        ⚡ Make a workout for myself
+      </Link>
 
       {active.length === 0 ? (
         <Card>
@@ -106,11 +116,11 @@ export default async function TeacherHome() {
 
       <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mt-10 mb-1">My Workouts</div>
       <div className="text-muted text-[14px] mb-4">
-        Samples you previewed. Tap a class to file a workout under it.
+        Samples you previewed and workouts you made for yourself. Tap a class to file one under it.
       </div>
       {mine.length === 0 ? (
         <div className="text-muted text-[14px]">
-          None yet. Open a class, save it, and tap &ldquo;Preview a sample workout&rdquo;.
+          None yet. Make a workout for yourself above, or open a class, save it, and tap &ldquo;Preview a sample workout&rdquo;.
         </div>
       ) : (
         <div className="flex flex-col gap-2.5">

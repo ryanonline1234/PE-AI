@@ -5,7 +5,7 @@ import { verifySecret } from "@/lib/auth";
 import { checkRateLimit, clientIp, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 import { applyEvent, drainLines, parseModelLine, reconcileTotals } from "@/lib/workout-stream";
 import { newWorkoutId, WORKOUT_ID_RE } from "@/lib/workout-id";
-import { cleanAnswers } from "@/lib/class-config";
+import { clampConfig, cleanAnswers } from "@/lib/class-config";
 import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
 import { canUseClass, ensureMember, getClassByCode, getSessionByDate, getSessionById, getStudentBrief } from "@/lib/class-access";
 import { sanitizeStudentText } from "@/lib/sanitize";
@@ -127,7 +127,19 @@ export async function POST(request: NextRequest) {
       session = await getSessionByDate(cls.id, schoolDate());
     }
   }
-  const cfg = (session?.config ?? cls.config) as ClassConfig;
+  let cfg = (session?.config ?? cls.config) as ClassConfig;
+  // The owner of a personal class may pick settings on the spot (a teacher's
+  // own workout, /teacher/workout). Only the five settings come along; they're
+  // saved so the form opens with them next time.
+  if (cls.kind === "personal" && cls.owner_id === account.id && body.config && typeof body.config === "object") {
+    const { duration, equipment, intensity, focus, customPrompt } = body.config as Record<string, unknown>;
+    cfg = clampConfig({ duration, equipment, intensity, focus, customPrompt });
+    const { error: saveError } = await supabase
+      .from("pe_classes")
+      .update({ config: cfg, updated_at: new Date().toISOString() })
+      .eq("id", cls.id);
+    if (saveError) console.error("inline settings save failed:", saveError);
+  }
   const studentBrief = sanitizeStudentText(await studentBriefPromise, 600);
   const isRegen = Boolean(feedback || previous);
   // The model may ask before building only on a first, real generation.
