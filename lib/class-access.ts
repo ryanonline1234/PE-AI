@@ -58,6 +58,16 @@ export async function getSessionByDate(classId: string, date: string): Promise<C
   return (data as ClassSession | null) ?? null;
 }
 
+/** A student's own sport brief (docs/03), or "" when they haven't saved one. */
+export async function getStudentBrief(userId: string): Promise<string> {
+  const { data } = await createServerClient()
+    .from("student_briefs")
+    .select("brief")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data?.brief as string | undefined) ?? "";
+}
+
 /** One session by id, only if it belongs to the class. */
 export async function getSessionById(classId: string, id: string): Promise<ClassSession | null> {
   const { data } = await createServerClient()

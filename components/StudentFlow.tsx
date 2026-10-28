@@ -4,6 +4,7 @@
 // quick questions, then the streaming workout. Rendered by /c/[code] after the
 // server has checked the signed-in account may use the class.
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiGenerateWorkoutStream } from "@/lib/api";
 import { applyEvent } from "@/lib/workout-stream";
@@ -14,7 +15,7 @@ import { WorkoutScreen } from "@/components/WorkoutScreen";
 
 type View = "form" | "questions" | "workout";
 
-export function StudentFlow({ code, label, sessionName, config, firstName, backHref }: {
+export function StudentFlow({ code, label, sessionName, config, firstName, backHref, hasSportBrief = false }: {
   code: string;
   label: string;
   /** Today's session, when the teacher named it. */
@@ -23,6 +24,8 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
   config: ClassConfig;
   firstName: string;
   backHref: string;
+  /** The student saved a sport brief (docs/03); the server adds it to the prompt. */
+  hasSportBrief?: boolean;
 }) {
   const router = useRouter();
   const [view, setView] = useState<View>("form");
@@ -170,9 +173,14 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
       <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
         Let&apos;s Build Your Workout
       </div>
-      <div className="text-muted text-[15px] mb-8">
+      <div className={`text-muted text-[15px] ${hasSportBrief ? "mb-2" : "mb-8"}`}>
         <strong className="text-accent">{label}</strong>{sessionName ? ` · ${sessionName}` : ""} · {config.duration} min · {config.intensity} intensity
       </div>
+      {hasSportBrief && (
+        <div className="text-muted text-[13px] mb-8">
+          ★ Your sport goals are included. <Link href="/me" className="text-accent">Edit them</Link>
+        </div>
+      )}
 
       <Card>
         <Field label="How fit do you feel today?">

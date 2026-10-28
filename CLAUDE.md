@@ -40,6 +40,13 @@ writes to the production database — that's fine for test classes, don't bulk-e
   the session on the server (`app/api/generate-workout`, step 4c) and saves
   `workouts.session_id`. The prompt lives in `lib/workout-prompt.ts`. No calorie
   targets: the AI estimates.
+- **Planning help** (`docs/03-planning-help.md`): a session's `brief` + pinned
+  `sources` live in its config (`classParamsBlock` feeds both generation and the
+  AI check). `/api/consult` drafts briefs; `/api/research` = Sonnet 5.5 web search
+  limited to `lib/trusted-sources.ts`, then Haiku structures findings with the
+  source as an enum (no invented links). A student's own brief is in
+  `student_briefs`, cleaned by `lib/student-brief.ts` (no health details), and
+  goes in the student's message, not the system prompt. Generation stays tool-free.
 - **Student free text is sanitized** before it reaches the model, and **names never
   reach the model** (workout prompt and teacher report are name-free).
 - **The AI talks back.** Teacher check (`/api/clarify-class`) stores a confirmed

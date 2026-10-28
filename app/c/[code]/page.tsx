@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { StudentFlow } from "@/components/StudentFlow";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
-import { canUseClass, ensureMember, getClassByCode, getSessionByDate } from "@/lib/class-access";
+import { canUseClass, ensureMember, getClassByCode, getSessionByDate, getStudentBrief } from "@/lib/class-access";
 import { DEFAULT_CONFIG } from "@/lib/class-config";
 import { schoolDate } from "@/lib/time";
 
@@ -21,8 +21,12 @@ export default async function ClassWorkoutPage({ params }: { params: Params }) {
   const cls = await getClassByCode(code);
   if (!cls || !canUseClass(cls, account.id)) notFound();
   await ensureMember(cls, account.id);
-  // Today's session sets the day's settings; the class defaults cover days without one.
-  const session = cls.kind === "class" ? await getSessionByDate(cls.id, schoolDate()) : null;
+  // Today's session sets the day's settings; the class defaults cover days
+  // without one. The student's sport brief rides along (docs/03).
+  const [session, sportBrief] = await Promise.all([
+    cls.kind === "class" ? getSessionByDate(cls.id, schoolDate()) : Promise.resolve(null),
+    getStudentBrief(account.id),
+  ]);
 
   const home = isTeacherAccount(account) ? "/teacher" : "/me";
   return (
@@ -33,6 +37,7 @@ export default async function ClassWorkoutPage({ params }: { params: Params }) {
       config={{ ...DEFAULT_CONFIG, ...(session?.config ?? cls.config) }}
       firstName={account.name.split(" ")[0]}
       backHref={home}
+      hasSportBrief={Boolean(sportBrief)}
     />
   );
 }

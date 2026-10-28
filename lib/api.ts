@@ -4,6 +4,9 @@
 // it is NOT the Anthropic key (which stays server-side only).
 import type {
   ClassConfig,
+  ConsultResult,
+  QA,
+  ResearchResult,
   GenerateWorkoutInput,
   ReportResponse,
   ReviewInput,
@@ -150,3 +153,19 @@ export const apiUpdateSession = (code: string, date: string, patch: { config?: C
 
 export const apiDeleteSession = (code: string, date: string) =>
   postJson<{ ok: true }>("/api/class-sessions", { code, date }, "DELETE");
+
+// ── Planning help (docs/03) ───────────────────────────────────
+
+/** One round of the sport consult: a draft brief and any questions still open. */
+export const apiConsult = (input: { for: "session" | "student"; topic: string; answers: QA[]; round: number; config?: ClassConfig }) =>
+  postJson<ConsultResult>("/api/consult", input);
+
+/** Search the trusted sites for findings a teacher can pin (teachers only). */
+export const apiResearch = (topic: string, config?: ClassConfig) =>
+  postJson<ResearchResult>("/api/research", { topic, config });
+
+/** Save the caller's own sport brief; returns what was stored after cleaning. */
+export const apiSaveStudentBrief = (brief: string) =>
+  postJson<{ brief: string; trimmed: boolean }>("/api/student-brief", { brief });
+
+export const apiDeleteStudentBrief = () => postJson<{ ok: true }>("/api/student-brief", {}, "DELETE");

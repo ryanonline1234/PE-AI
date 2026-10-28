@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <Layout backHref="/" backLabel="← Home">
-      <Prose title="Privacy Policy" updated="October 27, 2026">
+      <Prose title="Privacy Policy" updated="October 28, 2026">
         <section>
           <p>
             PE.AI writes personalized workouts for high school PE classes. Teachers set up classes, students sign in and
@@ -37,6 +37,10 @@ export default function PrivacyPage() {
               classes you joined, and your star ratings and comments.</li>
             <li><strong>Personal classes:</strong> if you make your own class, we store its settings and the workouts you
               generate in it. Only you can use it.</li>
+            <li><strong>My sport:</strong> if you save a sport brief, we store it with your account (up to 600
+              characters about your sport, position, season and goals) and send it to the AI with each workout, without
+              your name. It never holds injuries or health details: we take those out before saving. Your teacher
+              doesn&apos;t see it, and you can edit or delete it on your home page at any time.</li>
             <li><strong>Who sees it:</strong> you see your own workouts. The teacher who owns a class you joined sees your
               name, school email, the workouts you generated in that class, and your ratings and comments for it.
               Teachers never see your personal classes. Anyone you send a workout link to can open that workout after
@@ -47,8 +51,11 @@ export default function PrivacyPage() {
         <section>
           <h2>Teachers</h2>
           <ul>
-            <li><strong>Class settings:</strong> duration, calorie target, intensity, focus, equipment, instructions,
-              and the AI&apos;s confirmed summary and your answers to its questions.</li>
+            <li><strong>Class settings:</strong> duration, intensity, focus, equipment, instructions, the brief and
+              pinned research findings, and the AI&apos;s confirmed summary and your answers to its questions. Sessions
+              you plan store the same settings for their date.</li>
+            <li><strong>Research:</strong> topics you search are sent to Anthropic, whose web search looks only at the
+              trusted sites the app lists. Results aren&apos;t stored unless you pin them.</li>
             <li><strong>Your workouts:</strong> sample workouts you preview, and which classes you file workouts under.</li>
           </ul>
         </section>
@@ -69,8 +76,9 @@ export default function PrivacyPage() {
         <section>
           <h2>Who processes the data</h2>
           <ul>
-            <li><strong>Anthropic</strong> (Claude) receives the workout request described above, with no name or email,
-              and the day&apos;s anonymous comments for a teacher&apos;s report.</li>
+            <li><strong>Anthropic</strong> (Claude) receives the workout request described above (including a saved
+              sport brief), with no name or email; the day&apos;s anonymous comments for a teacher&apos;s report; and
+              teachers&apos; research topics.</li>
             <li><strong>Supabase</strong> stores the database and handles sign-in.</li>
             <li><strong>Google</strong> confirms your school account when you sign in.</li>
             <li><strong>Vercel</strong> hosts the site and counts anonymous page views.</li>

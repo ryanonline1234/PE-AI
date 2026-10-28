@@ -6,7 +6,8 @@ import { AccountBar } from "@/components/teacher/AccountBar";
 import { JoinClassForm, NewClassForm } from "@/components/teacher/TeacherControls";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
 import { classLabel, dayKey, dayLabel, loadClasses, loadMemberClassIds, loadWorkouts } from "@/lib/teacher-data";
-import { MAX_PERSONAL_CLASSES } from "@/lib/class-access";
+import { getStudentBrief, MAX_PERSONAL_CLASSES } from "@/lib/class-access";
+import { MySportCard } from "@/components/MySportCard";
 
 export const metadata: Metadata = { title: "My workouts — PE.AI", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -18,10 +19,11 @@ export default async function StudentHome() {
   if (isTeacherAccount(account)) redirect("/teacher");
 
   // RLS returns classes this student owns (personal) or has joined.
-  const [classes, memberIds, mine] = await Promise.all([
+  const [classes, memberIds, mine, sportBrief] = await Promise.all([
     loadClasses(),
     loadMemberClassIds(),
     loadWorkouts({ createdBy: account.id, limit: 60 }),
+    getStudentBrief(account.id),
   ]);
   const personal = classes.filter((c) => c.kind === "personal" && c.owner_id === account.id && !c.archived);
   const joined = classes.filter((c) => c.kind === "class" && memberIds.has(c.id) && !c.archived);
@@ -40,6 +42,8 @@ export default async function StudentHome() {
         <CardTitle>Join a class</CardTitle>
         <JoinClassForm />
       </Card>
+
+      <MySportCard initialBrief={sportBrief} />
 
       {joined.length > 0 && (
         <section className="mt-8">

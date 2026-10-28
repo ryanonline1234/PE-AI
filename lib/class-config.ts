@@ -1,7 +1,10 @@
 // Class config helpers shared by save-class, clarify-class and generate-workout.
-import type { ClassConfig, QA } from "@/lib/types";
+import { isTrustedUrl } from "@/lib/trusted-sources";
+import type { AskQuestion, ClassConfig, PinnedSource, QA } from "@/lib/types";
 
 export const MAX_CLARIFICATIONS = 6;
+export const MAX_BRIEF = 600;
+export const MAX_SOURCES = 5;
 
 /** New-class defaults. Plain module (not "use client") so server pages can spread it. */
 export const DEFAULT_CONFIG: ClassConfig = {
@@ -12,6 +15,8 @@ export const DEFAULT_CONFIG: ClassConfig = {
   customPrompt: "",
   summary: "",
   clarifications: [],
+  brief: "",
+  sources: [],
 };
 
 function cleanQA(list: unknown, max: number): QA[] {
@@ -41,6 +46,27 @@ export function withoutCalorieTargets(c: ClassConfig): ClassConfig {
   };
 }
 
+/** Pinned research: trusted https links only, short text, no repeated finding. */
+function cleanSources(list: unknown): PinnedSource[] {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set<string>();
+  const out: PinnedSource[] = [];
+  for (const x of list) {
+    if (!x || typeof x !== "object") continue;
+    const { title, url, takeaway } = x as Record<string, unknown>;
+    if (!isTrustedUrl(url) || typeof takeaway !== "string" || !takeaway.trim()) continue;
+    const key = `${url} ${takeaway.trim()}`; // one article can back two takeaways
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      title: typeof title === "string" && title.trim() ? title.trim().slice(0, 160) : new URL(url).hostname,
+      url,
+      takeaway: takeaway.trim().slice(0, 240),
+    });
+  }
+  return out.slice(0, MAX_SOURCES);
+}
+
 /** Only known keys, clamped. Teachers can't inject arbitrary data or widen limits. */
 export function clampConfig(config: Record<string, unknown>): ClassConfig {
   return withoutCalorieTargets({
@@ -51,11 +77,29 @@ export function clampConfig(config: Record<string, unknown>): ClassConfig {
     customPrompt: typeof config.customPrompt === "string" ? config.customPrompt.slice(0, 500) : "",
     summary:      typeof config.summary === "string" ? config.summary.trim().slice(0, 800) : "",
     clarifications: cleanQA(config.clarifications, MAX_CLARIFICATIONS),
+    brief:        typeof config.brief === "string" ? config.brief.trim().slice(0, MAX_BRIEF) : "",
+    sources:      cleanSources(config.sources),
   });
 }
 
 /** A session's name ("Volleyball conditioning"); empty when unnamed. */
 export const cleanSessionName = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 60) : "");
+
+/** Tap questions from a structured AI reply: short text, 2-4 options, at most `max`. */
+export function cleanAskQuestions(list: unknown, max: number): AskQuestion[] {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((q): q is { question: string; options: unknown } => !!q && typeof (q as { question?: unknown }).question === "string")
+    .map((q) => ({
+      question: q.question.trim().slice(0, 160),
+      options: (Array.isArray(q.options) ? q.options : [])
+        .filter((o): o is string => typeof o === "string" && o.trim().length > 0)
+        .map((o) => o.trim().slice(0, 60))
+        .slice(0, 4),
+    }))
+    .filter((q) => q.question)
+    .slice(0, max);
+}
 
 /** Clean a list of student answers (fewer, shorter). */
 export function cleanAnswers(list: unknown): QA[] {
@@ -67,7 +111,10 @@ export function cleanAnswers(list: unknown): QA[] {
  * summary is stale and Save runs the check again.
  */
 export function configSignature(c: ClassConfig): string {
-  return JSON.stringify([c.duration, c.intensity, c.focus, c.equipment.trim(), c.customPrompt.trim()]);
+  return JSON.stringify([
+    c.duration, c.intensity, c.focus, c.equipment.trim(), c.customPrompt.trim(),
+    (c.brief ?? "").trim(), (c.sources ?? []).map((x) => [x.url, x.takeaway]),
+  ]);
 }
 
 /** Prompt lines carrying the teacher's confirmed summary and answers. */
@@ -97,5 +144,20 @@ export function classParamsBlock(c: ClassConfig): string {
 - Available equipment: ${c.equipment || "Not specified"}
 - Intensity level: ${c.intensity}
 - Workout focus: ${FOCUS_LABELS[c.focus] ?? c.focus}
-${c.customPrompt ? `- Additional teacher instructions: ${c.customPrompt}` : "- Additional teacher instructions: none"}`;
+${c.customPrompt ? `- Additional teacher instructions: ${c.customPrompt}` : "- Additional teacher instructions: none"}${planningLines(c)}`;
+}
+
+/** The brief and pinned research (docs/03), as extra parameter lines. */
+function planningLines(c: ClassConfig): string {
+  const lines: string[] = [];
+  const brief = (c.brief ?? "").trim();
+  if (brief) lines.push(`- The teacher's brief for this session (build every workout around it):\n  ${brief.replace(/\n+/g, "\n  ")}`);
+  const sources = c.sources ?? [];
+  if (sources.length > 0) {
+    lines.push(
+      "- Research the teacher pinned (apply where it fits this class):\n" +
+        sources.map((x) => `  - ${x.takeaway} (${x.title})`).join("\n")
+    );
+  }
+  return lines.length ? `\n${lines.join("\n")}` : "";
 }

@@ -46,6 +46,7 @@ RULES:
 - All exercises must be safe and appropriate for a high school PE class
 - Adapt difficulty to match the student's stated fitness level
 - Modify or exclude exercises that conflict with the student's stated injuries or limitations
+- The teacher's parameters and brief come first; fit the student's own sport goals in where they don't conflict
 - There is no calorie target. Estimate calories honestly for a typical high school student doing this workout as written; do not inflate them, and ignore any calorie target mentioned above
 - Keep the total time at or under ${cfg.duration} minutes
 - Be encouraging and motivating in tone
