@@ -194,3 +194,7 @@ the PE teacher and Mitty's tech office): everyone signs in.
 - No new unowned classes can appear: the only insert (`POST /api/classes`)
   always sets `owner_id`. The admin box on /teacher and
   `/api/admin/assign-class` are now dead code, kept until Ryan decides.
+- Same day, Ryan's call: the dead admin-assign code was removed too (admin box
+  on /teacher, `/api/admin/assign-class`, `AssignClassForm`, `apiAssignClass`,
+  and the "ask the admin to assign it" copy). The `admin` role stays; it now
+  only counts as a teacher and shows "· admin" in the account bar.
