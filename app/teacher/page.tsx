@@ -42,7 +42,7 @@ export default async function TeacherHome() {
   const labelFor = new Map(classes.map((c) => [c.code, classLabel(c)]));
 
   return (
-    <Layout backHref="/" backLabel="← Home">
+    <Layout>
       <AccountBar account={account} />
 
       <div className="font-display text-[42px] font-black uppercase tracking-[-1px] leading-none mb-2">Your Classes</div>
