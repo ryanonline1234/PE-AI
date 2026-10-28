@@ -7,7 +7,8 @@ import { applyEvent, drainLines, parseModelLine, reconcileTotals } from "@/lib/w
 import { newWorkoutId, WORKOUT_ID_RE } from "@/lib/workout-id";
 import { cleanAnswers } from "@/lib/class-config";
 import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
-import { canUseClass, ensureMember, getClassByCode, getSessionByDate, getSessionById } from "@/lib/class-access";
+import { canUseClass, ensureMember, getClassByCode, getSessionByDate, getSessionById, getStudentBrief } from "@/lib/class-access";
+import { sanitizeStudentText } from "@/lib/sanitize";
 import { isDateKey, schoolDate } from "@/lib/time";
 import { MAX_QUESTIONS, workoutSystemPrompt } from "@/lib/workout-prompt";
 import { EMPTY_WORKOUT, type AskQuestion, type ClassConfig, type ClassSession, type Workout, type WorkoutEvent } from "@/lib/types";
@@ -27,15 +28,8 @@ function compactWorkout(w: Workout) {
   };
 }
 
-// Basic prompt-injection guard: strip common injection patterns from student input
-function sanitizeStudentInput(str: string = ""): string {
-  return str
-    .slice(0, 300)
-    .replace(/ignore (previous|all|prior|above)/gi, "")
-    .replace(/system prompt/gi, "")
-    .replace(/\[INST\]|\[\/INST\]|<s>|<\/s>/g, "")
-    .trim();
-}
+// Basic prompt-injection guard for student input (lib/sanitize.ts).
+const sanitizeStudentInput = (str: string = "") => sanitizeStudentText(str, 300);
 
 export async function POST(request: NextRequest) {
   // 1. Auth check
@@ -97,6 +91,10 @@ export async function POST(request: NextRequest) {
     .map((qa) => `- Q: ${sanitizeStudentInput(qa.question)}\n  A: ${sanitizeStudentInput(qa.answer)}`)
     .join("\n");
 
+  // The student's own sport brief (docs/03): fetched alongside the lookups
+  // below, ignored for the owner's sample previews.
+  const studentBriefPromise = sample ? Promise.resolve("") : getStudentBrief(account.id);
+
   // 4b. Regeneration: load the workout being changed (same class only), so the
   //     model edits it instead of starting over, and can say what it changed.
   let previous: Workout | null = null;
@@ -130,6 +128,7 @@ export async function POST(request: NextRequest) {
     }
   }
   const cfg = (session?.config ?? cls.config) as ClassConfig;
+  const studentBrief = sanitizeStudentText(await studentBriefPromise, 600);
   const isRegen = Boolean(feedback || previous);
   // The model may ask before building only on a first, real generation.
   const allowQuestions = !sample && !isRegen && answers.length === 0 && body.skipQuestions !== true;
@@ -143,6 +142,7 @@ export async function POST(request: NextRequest) {
 Fitness level: ${level}
 Injuries or physical limitations: ${notes}
 ${prefs    ? `Personal preferences: ${prefs}`            : ""}
+${studentBrief ? `My own sport goals (saved from my sport consult): ${studentBrief}` : ""}
 ${answersText ? `Answers to your questions:\n${answersText}` : ""}
 ${previous ? `Previous workout (JSON):\n${JSON.stringify(compactWorkout(previous))}` : ""}
 ${feedback ? `Requested changes: ${feedback}` : ""}

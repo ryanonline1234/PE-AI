@@ -221,3 +221,26 @@ different settings. Design in `docs/02-sessions.md`; Ryan went with the recs:
   (sport consult, allowlisted research with sources) that writes a brief onto
   a session. PR C = a student's own sport brief (no health details stored)
   and progression memory. Each merges only on Ryan's OK.
+
+## 2026-10-28 — Planning help: consult, research with sources, students' sport briefs
+Ryan said go ahead with ideas 1–3 from the docs/02 §5 brainstorm. Design in
+`docs/03-planning-help.md`.
+
+- **Briefs are setup-time text, not generation-time tools.** Consult and
+  research run once (Haiku 5.5; Sonnet 5.5 + web search); per-student
+  generation stays Haiku 5.5 with no tools, so its latency doesn't move.
+- **Research is two calls.** Web search always returns citations and
+  structured output rejects citations, so a second Haiku call structures the
+  findings with `source` constrained to an enum of the URLs the search
+  returned. No invented links; hosts are re-checked against the allowlist
+  (`nsca.com`, `acsm.org`, `nih.gov`, `cdc.gov`, `nata.org`, `aap.org`,
+  `healthychildren.org`) server-side and on save.
+- **Research is teacher-only**, capped at 10 runs per teacher per hour and 100
+  per day ($10 per 1,000 searches plus tokens).
+- **A student's sport brief is new stored minors' data**, approved by Ryan's
+  go-ahead on "Health details are not saved". Stored: up to 600 characters
+  about sport, position, season and goals, in `student_briefs`, deleted with
+  the account and deletable by the student. Health sentences are stripped on
+  save, the consult never asks about them, teachers never see the brief, and
+  it reaches the model in the student's message under the teacher's settings.
+  The privacy page says so.

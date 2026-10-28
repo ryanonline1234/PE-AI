@@ -29,6 +29,30 @@ export interface ClassConfig {
   summary?: string;
   /** Answers the teacher gave during the AI check. Fed to every generation. */
   clarifications?: QA[];
+  /** The teacher's plan for the day, from the sport consult or typed (docs/03). */
+  brief?: string;
+  /** Research findings the teacher pinned; URLs are on the trusted list. */
+  sources?: PinnedSource[];
+}
+
+/** One research finding: a takeaway and the trusted page it came from. */
+export interface PinnedSource {
+  title: string;
+  url: string;
+  takeaway: string;
+}
+
+/** Response of /api/consult: a draft brief and any questions still open. */
+export interface ConsultResult {
+  brief: string;
+  questions: AskQuestion[];
+}
+
+/** Response of /api/research. */
+export interface ResearchResult {
+  findings: PinnedSource[];
+  /** Web searches the run used (billed). */
+  searches: number;
 }
 
 /**

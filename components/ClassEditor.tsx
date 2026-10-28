@@ -15,6 +15,7 @@ import { EMPTY_WORKOUT, type ClassCheck, type ClassConfig, type QA, type ReportM
 import { QuestionList, collectAnswers, NO_ANSWERS, type Answers } from "@/components/QuestionList";
 import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle, Chip, Field, Textarea } from "@/components/ui";
 import { WorkoutScreen } from "@/components/WorkoutScreen";
+import { PlanWithAI } from "@/components/PlanWithAI";
 
 /** The teacher's AI check in progress: what the AI said, and the answers so far. */
 interface CheckState extends ClassCheck {
@@ -265,6 +266,11 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
           </Field>
         )}
       </Card>
+
+      {/* The brief and pinned research (docs/03), teacher classes only. */}
+      {!personal && (
+        <PlanWithAI config={config} onChange={(patch) => setConfig((c) => ({ ...c, ...patch }))} sessionDate={sessionDate} />
+      )}
 
       {check ? (
         <Card style={{ borderColor: "var(--accent2)" }}>
