@@ -189,6 +189,21 @@ export async function loadSessions(classId: string, fromDate: string): Promise<C
   return (data ?? []) as ClassSession[];
 }
 
+/** Sessions of several classes between two dates (inclusive), for week grids. */
+export async function loadSessionsBetween(classIds: string[], from: string, to: string): Promise<(ClassSession & { class_id: string })[]> {
+  if (classIds.length === 0) return [];
+  const supabase = await createUserClient();
+  const { data } = await supabase
+    .from("class_sessions")
+    .select(`class_id, ${SESSION_COLS}`)
+    .in("class_id", classIds)
+    .gte("session_date", from)
+    .lte("session_date", to)
+    .order("session_date", { ascending: true })
+    .limit(500);
+  return (data ?? []) as (ClassSession & { class_id: string })[];
+}
+
 export async function loadSession(classId: string, date: string): Promise<ClassSession | null> {
   const supabase = await createUserClient();
   const { data } = await supabase

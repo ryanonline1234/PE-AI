@@ -156,6 +156,10 @@ export const apiCreateSession = (code: string, date: string, copyFrom: string | 
 export const apiUpdateSession = (code: string, date: string, patch: { config?: ClassConfig; name?: string; specifics?: string }) =>
   postJson<{ ok: true }>("/api/class-sessions", { code, date, ...patch }, "PATCH");
 
+/** Copy a session to other days and/or other classes; days that already have one keep theirs. */
+export const apiCopySession = (code: string, date: string, targets: { code: string; date: string }[]) =>
+  postJson<{ copied: number; skipped: { code: string; date: string }[] }>("/api/class-sessions/copy", { code, date, targets });
+
 export const apiDeleteSession = (code: string, date: string) =>
   postJson<{ ok: true }>("/api/class-sessions", { code, date }, "DELETE");
 
