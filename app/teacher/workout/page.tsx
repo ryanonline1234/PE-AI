@@ -26,6 +26,7 @@ export default async function TeacherWorkoutPage() {
       label="Just me"
       config={{ ...DEFAULT_CONFIG, ...(space?.config ?? {}) }}
       firstName={account.name.split(" ")[0]}
+      accountId={account.id}
       backHref="/teacher"
       ownSettings
     />

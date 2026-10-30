@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <Layout backHref="/" backLabel="Home">
-      <Prose title="Privacy Policy" updated="October 28, 2026">
+      <Prose title="Privacy Policy" updated="October 29, 2026">
         <section>
           <p>
             PE.AI writes personalized workouts for high school PE classes. Teachers set up classes, students sign in and
@@ -31,8 +31,11 @@ export default function PrivacyPage() {
         <section>
           <h2>Students</h2>
           <ul>
-            <li><strong>Sent to the AI, not stored:</strong> fitness level, injuries or limitations, preferences, and
-              answers to the AI&apos;s quick questions. They are used once to write the workout.</li>
+            <li><strong>Sent to the AI, not stored on our servers:</strong> fitness level, injuries or limitations,
+              preferences, and answers to the AI&apos;s quick questions. They are used once to write the workout.</li>
+            <li><strong>On your device only:</strong> your browser remembers the fitness level and preferences from your
+              last workout so &ldquo;Same as last time&rdquo; can reuse them with one tap. They stay in that browser.
+              Injuries are never remembered, on your device or ours.</li>
             <li><strong>Stored with your account:</strong> each workout you generate, which class it was for, the
               classes you joined, and your star ratings and comments.</li>
             <li><strong>Personal classes:</strong> if you make your own class, we store its settings and the workouts you
@@ -51,9 +54,9 @@ export default function PrivacyPage() {
         <section>
           <h2>Teachers</h2>
           <ul>
-            <li><strong>Class settings:</strong> duration, intensity, focus, equipment, instructions, the brief and
-              pinned research findings, and the AI&apos;s confirmed summary and your answers to its questions. Sessions
-              you plan store the same settings for their date.</li>
+            <li><strong>Class settings:</strong> duration, intensity, focus, equipment, instructions, the class&apos;s AI
+              background and pinned research findings, and the AI&apos;s confirmed summary and your answers to its
+              questions. Sessions you plan store their own settings and specifics for their date.</li>
             <li><strong>Presets:</strong> named sets of settings you save, so you can reuse them across classes.</li>
             <li><strong>Research:</strong> topics you search are sent to Anthropic, whose web search looks only at the
               trusted sites the app lists. Results aren&apos;t stored unless you pin them.</li>

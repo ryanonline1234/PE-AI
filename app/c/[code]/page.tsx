@@ -36,6 +36,7 @@ export default async function ClassWorkoutPage({ params }: { params: Params }) {
       sessionName={session?.name}
       config={{ ...DEFAULT_CONFIG, ...(session?.config ?? cls.config) }}
       firstName={account.name.split(" ")[0]}
+      accountId={account.id}
       backHref={home}
       hasSportBrief={Boolean(sportBrief)}
     />
