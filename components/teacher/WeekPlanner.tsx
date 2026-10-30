@@ -206,7 +206,7 @@ function CopyDialog({ code, today, day, week, otherClasses, onClose, onDone }: {
         <div className="flex flex-wrap gap-1.5">
           {week.filter((d) => d !== day.date).map((d) => (
             <button key={d} type="button" aria-pressed={days.has(d)} disabled={d < today} className={chip(days.has(d))} onClick={() => toggle(days, d, setDays)}>
-              {fmt(d, { weekday: "short", day: "numeric" })}
+              {fmt(d, { weekday: "short" })} {Number(d.slice(8))}
             </button>
           ))}
         </div>

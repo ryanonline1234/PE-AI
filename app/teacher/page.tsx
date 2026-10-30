@@ -138,7 +138,7 @@ export default async function TeacherHome() {
                   <th className="text-left font-semibold text-muted pb-2 pr-3">Class</th>
                   {weekDates.map((d) => (
                     <th key={d} className={`text-left font-semibold pb-2 px-2 ${d === todayKey ? "text-accent" : "text-muted"}`}>
-                      {new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", day: "numeric", timeZone: "UTC" })}
+                      {new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })} {Number(d.slice(8))}
                     </th>
                   ))}
                 </tr>
