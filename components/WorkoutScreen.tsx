@@ -85,8 +85,10 @@ export function WorkoutScreen({
         await navigator.share({ title, url });
         setShareState("shared");
         return;
-      } catch {
-        // Dismissed or unsupported for this payload: fall through to copy.
+      } catch (e) {
+        // Closing the share sheet is the student's choice, not a failure.
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        // Unsupported for this payload: fall through to copy.
       }
     }
     try {
@@ -243,7 +245,7 @@ export function WorkoutScreen({
               />
               <div className="flex gap-2.5 mt-3">
                 <BtnSecondary style={{ flex: 1 }} onClick={() => setShowRegeneratePanel(false)}>Cancel</BtnSecondary>
-                <BtnPrimary style={{ flex: 2 }} onClick={() => onRegenerate(regenerateFeedback)}>
+                <BtnPrimary style={{ flex: 2 }} onClick={() => onRegenerate(regenerateFeedback)} disabled={!regenerateFeedback.trim()}>
                   <Zap className="icon" /> Regenerate
                 </BtnPrimary>
               </div>
@@ -327,7 +329,7 @@ export function WorkoutScreen({
 
 function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
-    <div className="print-card bg-surface border border-border rounded-xl px-4 pt-3.5 pb-1.5 mb-3">
+    <div className="bg-surface border border-border rounded-xl px-4 pt-3.5 pb-1.5 mb-3">
       <h2 className="flex items-center gap-2 t-label pb-2 border-b border-border">{icon}{title}</h2>
       <div>{children}</div>
     </div>
@@ -343,7 +345,7 @@ function Row({ name, right, open, onToggle, children }: {
   children: ReactNode;
 }) {
   return (
-    <div className="border-b border-border last:border-b-0">
+    <div className="border-b border-border last:border-b-0 print:break-inside-avoid">
       <button
         type="button"
         onClick={onToggle}
@@ -395,11 +397,9 @@ function StartBar({ ready, onStart, items, shareLabel }: {
     <>
       <div className="no-print fixed inset-x-0 bottom-0 z-40 bg-[rgba(10,10,15,0.94)] backdrop-blur border-t border-border pb-[env(safe-area-inset-bottom)]">
         <div ref={wrapRef} className="relative max-w-[740px] mx-auto px-4 py-3 flex gap-2.5">
-          {shareLabel && (
-            <div role="status" className="absolute left-4 bottom-[calc(100%+8px)] bg-surface border border-border rounded-full px-3.5 py-1.5 text-[13px] text-accent">
-              {shareLabel}
-            </div>
-          )}
+          <div role="status" className={shareLabel ? "absolute left-4 bottom-[calc(100%+8px)] bg-surface border border-border rounded-full px-3.5 py-1.5 text-[13px] text-accent" : "sr-only"}>
+            {shareLabel ?? ""}
+          </div>
           <button
             type="button"
             onClick={onStart}
@@ -412,22 +412,21 @@ function StartBar({ ready, onStart, items, shareLabel }: {
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="More actions"
-            aria-haspopup="menu"
             aria-expanded={menuOpen}
+            aria-controls="workout-actions"
             className="w-[56px] inline-flex items-center justify-center bg-surface2 border border-border rounded-lg text-text cursor-pointer"
           >
             <Ellipsis className="w-6 h-6" />
           </button>
           {menuOpen && (
-            <div role="menu" className="absolute right-4 bottom-[calc(100%+8px)] w-[230px] bg-surface border border-border rounded-xl p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.5)]">
+            <div id="workout-actions" className="absolute right-4 bottom-[calc(100%+8px)] w-[230px] bg-surface border border-border rounded-xl p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.5)]">
               {items.filter((x): x is MenuItem => x !== null).map((item) =>
                 item.href ? (
-                  <a key={item.label} role="menuitem" href={item.href} className={itemClass}>{item.icon}{item.label}</a>
+                  <a key={item.label} href={item.href} className={itemClass}>{item.icon}{item.label}</a>
                 ) : (
                   <button
                     key={item.label}
                     type="button"
-                    role="menuitem"
                     disabled={item.disabled}
                     className={itemClass}
                     onClick={() => { setMenuOpen(false); item.onSelect?.(); }}

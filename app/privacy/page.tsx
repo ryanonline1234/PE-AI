@@ -35,7 +35,7 @@ export default function PrivacyPage() {
               preferences, and answers to the AI&apos;s quick questions. They are used once to write the workout.</li>
             <li><strong>On your device only:</strong> your browser remembers the fitness level and preferences from your
               last workout so &ldquo;Same as last time&rdquo; can reuse them with one tap. They stay in that browser.
-              Injuries are never remembered, on your device or ours.</li>
+              What you type in the injuries box is never kept for next time.</li>
             <li><strong>Stored with your account:</strong> each workout you generate, which class it was for, the
               classes you joined, and your star ratings and comments.</li>
             <li><strong>Personal classes:</strong> if you make your own class, we store its settings and the workouts you

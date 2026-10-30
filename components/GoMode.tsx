@@ -247,8 +247,8 @@ export function GoMode({ workout, onClose, onFinish }: {
         <span className={cn("text-[16px] font-semibold", accent)}>
           {step.position}{step.setLabel ? ` · ${step.setLabel}` : ""}
         </span>
-        <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-muted tabular-nums" aria-label="Time so far">
-          <Timer className="icon" />{Math.floor(elapsed / 60)}:{String(Math.floor(elapsed % 60)).padStart(2, "0")}
+        <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-muted tabular-nums">
+          <span className="sr-only">Time so far </span><Timer className="icon" />{Math.floor(elapsed / 60)}:{String(Math.floor(elapsed % 60)).padStart(2, "0")}
         </span>
       </div>
 
