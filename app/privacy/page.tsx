@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <Layout backHref="/" backLabel="← Home">
+    <Layout backHref="/" backLabel="Home">
       <Prose title="Privacy Policy" updated="October 28, 2026">
         <section>
           <p>

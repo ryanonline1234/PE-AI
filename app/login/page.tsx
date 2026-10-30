@@ -23,11 +23,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   // After Google, land where the visitor was going, else their home ("/" routes by role).
   const href = `/auth/signin?next=${encodeURIComponent(safeNextPath(next, "/"))}`;
   return (
-    <Layout backHref="/" backLabel="← Home">
+    <Layout backHref="/" backLabel="Home">
       <div className="max-w-[460px]">
-        <div className="font-display text-[42px] font-black uppercase tracking-[-1px] leading-none mb-3">
-          Sign In
-        </div>
+        <h1 className="t-page mb-3">Sign in</h1>
         <p className="text-muted text-[15px] leading-[1.6] mb-8">
           Use your Mitty Google account. Students (@mittymonarch.com) get workouts and keep a history of every one.
           Teachers (@mitty.com) run classes and see how their students are doing.

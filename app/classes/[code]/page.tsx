@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft, Star, Zap } from "lucide-react";
 import { Card, CardTitle, Layout } from "@/components/ui";
 import { ClassEditor } from "@/components/ClassEditor";
 import { AIBackgroundCard } from "@/components/AIContext";
@@ -83,7 +84,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
   const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host")}`;
   const studentLink = `${origin}/c/${code}`;
 
-  const heading = "font-display text-[26px] font-black uppercase tracking-[-0.5px] mb-1";
+  const heading = "t-section mb-1";
 
   const archivedNote = cls.archived && (
     <Card style={{ borderColor: "var(--accent2)" }}>
@@ -95,7 +96,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
 
   const filedSection = (
     <section>
-      <div className={heading}>Filed Workouts</div>
+      <h2 className={heading}>Filed workouts</h2>
       <div className="text-muted text-[14px] mb-4">Workouts you pinned to {classLabel(cls)}.</div>
       {filed.length === 0 ? (
         <div className="text-muted text-[14px]">Nothing filed yet. Use &ldquo;+ File&rdquo; on any workout.</div>
@@ -109,7 +110,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
 
   const workoutsSection = (
     <section>
-      <div className={heading}>{personal ? "Your Workouts" : "Student Workouts"}</div>
+      <h2 className={heading}>{personal ? "Your workouts" : "Student workouts"}</h2>
       <div className="text-muted text-[14px] mb-4">
         {personal ? "Everything you generated here in the last 90 days." : "Everything generated with this code in the last 14 days."}
       </div>
@@ -135,20 +136,20 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
 
   const footer = (
     <div className="mt-10 flex justify-between items-center gap-3">
-      <Link href={home} className="text-muted text-[13px]">← {personal ? "Home" : "All classes"}</Link>
+      <Link href={home} className="text-muted text-[13px] inline-flex items-center gap-1"><ArrowLeft className="icon" />{personal ? "Home" : "All classes"}</Link>
       <ArchiveToggle code={code} archived={cls.archived} home={home} />
     </div>
   );
 
   // A student's personal class: one column, as before.
   if (personal) return (
-    <Layout backHref={home} backLabel="← Home">
+    <Layout backHref={home} backLabel="Home">
       <div className="mb-4"><LabelEditor code={code} label={cls.label ?? ""} /></div>
       <Link
         href={`/c/${code}`}
-        className="flex items-center justify-center w-full bg-accent text-bg rounded-lg px-7 py-4 font-display text-[22px] font-bold uppercase tracking-[0.5px] no-underline mb-6"
+        className="flex items-center justify-center gap-2 w-full bg-accent text-bg rounded-lg px-7 py-4 font-display text-[22px] font-bold uppercase tracking-[0.5px] no-underline mb-6"
       >
-        ⚡ Start a workout
+        <Zap className="icon" /> Start a workout
       </Link>
       {archivedNote}
       <ClassEditor code={code} initialConfig={cls.config} kind={cls.kind} />
@@ -162,7 +163,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
     <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-6 lg:items-start">
       <div>
         <div className="bg-surface2 border-[1.5px] border-accent rounded-xl p-6 text-center mb-4">
-          <div className="text-[11px] font-semibold tracking-[2px] uppercase text-muted mb-2">Class code for students</div>
+          <div className="t-eyebrow text-muted mb-2">Class code for students</div>
           <div className="font-display text-[52px] font-black text-accent tracking-[8px] leading-none mb-3.5">{code}</div>
           <div className="flex justify-center gap-2 flex-wrap">
             <CopyButton text={code} label="Copy code" />
@@ -173,7 +174,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
         {archivedNote}
       </div>
       <section>
-        <div className={heading}>Sessions</div>
+        <h2 className={heading}>Sessions</h2>
         <div className="text-muted text-[14px] mb-4">
           Each day can have its own settings. On a day without a session, students get the default settings.
         </div>
@@ -206,7 +207,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
   const studentsTab = (
     <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
       <section className="mb-10 lg:mb-0">
-        <div className={heading}>Roster</div>
+        <h2 className={heading}>Roster</h2>
         <div className="text-muted text-[14px] mb-4">Students who joined with the code, and their workouts in the last 14 days.</div>
         {roster.length === 0 ? (
           <div className="text-muted text-[14px]">No one has joined yet.</div>
@@ -235,7 +236,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
       <div className="flex flex-col gap-10">
         <DayReport code={code} />
         <section>
-          <div className={heading}>Ratings</div>
+          <h2 className={heading}>Ratings</h2>
           <div className="text-muted text-[14px] mb-4">What students said in the last 14 days.</div>
           {reviews.length === 0 ? (
             <div className="text-muted text-[14px]">No ratings yet.</div>
@@ -243,13 +244,13 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
             <Card>
               <CardTitle>
                 {reviews.length} rating{reviews.length === 1 ? "" : "s"} · average{" "}
-                {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)}★
+                {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)} stars
               </CardTitle>
               <div className="flex flex-col">
                 {reviews.map((r, i) => (
                   <div key={i} className="border-t border-border py-3 first:border-t-0 first:pt-0">
                     <div className="flex justify-between gap-3 text-[13px]">
-                      <span className="text-accent tracking-[2px]">{"★".repeat(r.rating)}<span className="text-border">{"★".repeat(5 - r.rating)}</span></span>
+                      <Stars rating={r.rating} />
                       <span className="text-muted">{r.student_name || "Student"} · {dayLabel(dayKey(r.created_at))} {timeLabel(r.created_at)}</span>
                     </div>
                     {r.comment && <div className="text-[14px] leading-[1.5] mt-1">{r.comment}</div>}
@@ -271,7 +272,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
   );
 
   return (
-    <Layout backHref={home} backLabel="← Classes" wide>
+    <Layout backHref={home} backLabel="Classes" wide>
       <div className="mb-6 md:max-w-[620px]"><LabelEditor code={code} label={cls.label ?? ""} /></div>
       <Tabs
         initial={(await searchParams).tab}
@@ -314,12 +315,23 @@ function SessionLine({ s, code, highlight = false }: { s: ClassSession; code: st
       className={`flex items-center justify-between gap-3 bg-surface border rounded-xl px-4 py-3 no-underline text-text hover:border-accent ${highlight ? "border-accent" : "border-border"}`}
     >
       <div className="min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.8px] text-muted">{dayLabel(s.session_date)}</div>
+        <div className="t-eyebrow text-muted">{dayLabel(s.session_date)}</div>
         <div className="font-semibold text-[15px] truncate">{s.name || "Untitled session"}</div>
       </div>
       <div className="text-[12px] text-muted text-right shrink-0">
         {s.config.duration} min · {s.config.intensity} · {s.config.focus}
       </div>
     </Link>
+  );
+}
+
+/** A rating as five line stars, the first `rating` filled. */
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span className="inline-flex gap-0.5 text-accent" aria-label={`${rating} of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star key={n} className={n <= rating ? "w-3.5 h-3.5 fill-current" : "w-3.5 h-3.5 text-border"} aria-hidden />
+      ))}
+    </span>
   );
 }

@@ -24,7 +24,7 @@ export function SettingsFields({ config, onChange }: {
         />
       </Field>
 
-      <Field label="Equipment Available">
+      <Field label="Equipment available">
         <EquipmentPicker value={config.equipment} onChange={(v) => onChange("equipment", v)} />
       </Field>
 
@@ -36,7 +36,7 @@ export function SettingsFields({ config, onChange }: {
         </div>
       </Field>
 
-      <Field label="Workout Focus">
+      <Field label="Workout focus">
         <div className="flex flex-wrap gap-2">
           {([["Mixed","mixed"],["Cardio","cardio"],["Strength","strength"],["Flexibility","flexibility"]] as const).map(([l,v]) =>
             <Chip key={v} label={l} value={v} current={config.focus} onChange={val => onChange("focus", val)} />
@@ -44,7 +44,7 @@ export function SettingsFields({ config, onChange }: {
         </div>
       </Field>
 
-      <Field label="Custom Instructions (optional — max 500 chars)">
+      <Field label="Custom instructions (optional)">
         <Textarea
           value={config.customPrompt}
           onChange={v => onChange("customPrompt", v.slice(0, 500))}

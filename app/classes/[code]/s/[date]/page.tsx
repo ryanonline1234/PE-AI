@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { Layout } from "@/components/ui";
 import { ClassEditor } from "@/components/ClassEditor";
 import { SessionSpecificsCard } from "@/components/AIContext";
@@ -37,13 +38,11 @@ export default async function SessionPage({ params, searchParams }: { params: Pa
   const near = ["Today", "Tomorrow", "Yesterday"].includes(relative) ? ` · ${relative}` : "";
 
   return (
-    <Layout backHref={`/classes/${code}`} backLabel="← Class" wide>
-      <div className="text-[11px] font-semibold tracking-[2px] uppercase text-muted mb-1">
+    <Layout backHref={`/classes/${code}`} backLabel="Class" wide>
+      <div className="t-eyebrow text-muted mb-1">
         {classLabel(cls)} · Session{near}
       </div>
-      <div className="font-display text-[42px] font-black uppercase tracking-[-1px] leading-none mb-4">
-        {longDayLabel(date)}
-      </div>
+      <h1 className="t-page mb-4">{longDayLabel(date)}</h1>
       {isToday && (
         <div className="text-[14px] text-accent mb-4">Live today: students who open the class get these settings.</div>
       )}
@@ -66,7 +65,7 @@ export default async function SessionPage({ params, searchParams }: { params: Pa
       />
 
       <div className="mt-10 flex justify-between items-start gap-3">
-        <Link href={`/classes/${code}`} className="text-muted text-[13px]">← {classLabel(cls)}</Link>
+        <Link href={`/classes/${code}`} className="text-muted text-[13px] inline-flex items-center gap-1"><ArrowLeft className="icon" />{classLabel(cls)}</Link>
         <DeleteSessionButton code={code} date={date} />
       </div>
     </Layout>

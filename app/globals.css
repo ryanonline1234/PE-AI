@@ -48,6 +48,27 @@ body {
   min-height: 100vh;
 }
 
+/* ── Type scale (DECISIONS 2026-10-29) ─────────────────────────────────────
+   Headings and labels are sentence case. ALL CAPS is kept for the big
+   moments only: the landing hero, the workout title, Go mode, the class code
+   and the main lime buttons. Utilities still win over these (spacing, color). */
+@layer components {
+  .t-page    { font-family: var(--font-display); font-weight: 900; font-size: 40px; line-height: 1; letter-spacing: -0.5px; }
+  .t-section { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; }
+  .t-card    { font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 1.15; }
+  .t-label   { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .t-eyebrow { font-size: 12px; font-weight: 600; }
+}
+
+/* Line icons (lucide-react) sized to the text they sit in. */
+.icon {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  flex-shrink: 0;
+}
+
 /* Spinner keyframe (previously an inline <style> inside the Spinner). */
 @keyframes pe-spin {
   to {

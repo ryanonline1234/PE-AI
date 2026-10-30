@@ -72,7 +72,7 @@ export function ConsultFlow({ audience, config, onUse, onCancel }: {
 
   return (
     <div className="bg-surface2 border border-accent2 rounded-xl p-4 mb-4">
-      <div className="text-[11px] font-semibold tracking-[2px] uppercase text-accent2 mb-2">
+      <div className="t-eyebrow text-accent2 mb-2">
         {copy.title}{round > 1 ? ` · round ${round}` : ""}
       </div>
 
@@ -94,11 +94,11 @@ export function ConsultFlow({ audience, config, onUse, onCancel }: {
 
       {result && (
         <>
-          <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-1.5">{copy.draft}</div>
+          <div className="t-label mb-1.5">{copy.draft}</div>
           <div className="text-[15px] leading-[1.55] whitespace-pre-wrap mb-4">{result.text}</div>
           {result.questions.length > 0 && round < MAX_ROUNDS && (
             <div className="mb-4">
-              <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-3">To sharpen it</div>
+              <div className="t-label mb-3">To sharpen it</div>
               <QuestionList questions={result.questions} answers={current} onChange={setCurrent} accent="accent2" />
             </div>
           )}

@@ -299,3 +299,28 @@ the recs:
   saves straight to the class; sessions don't hold a background).
 - New table `setting_presets` (migration 20261028000010, applied), unique per
   owner and name, max 30 per teacher.
+
+## 2026-10-29 — Claude tests and merges; UI polish batch from docs/04
+Ryan: "do your own tests since I'm not willing to preview until it is merged
+and in production", and go ahead with the docs/04 items he kept (S1, S2, S3,
+S6; T1, T2, T3, T4, unsaved-edits warning; one icon set, real dialogs, fewer
+all-caps headings). Dropped: finish screen, student home as "today",
+add-to-home-screen tip, student detail drawer, printable cards, toasts,
+empty-state and accessibility passes.
+
+- **Testing before merge** is Claude's job now: tsc/lint/build, the stubbed-auth
+  route harness for API changes, and a local dev rig (a scratchpad copy of the
+  app with `lib/supabase-auth.ts` and `lib/teacher-auth.ts` swapped for stubs
+  that sign in as the admin profile, with RLS scoping re-applied by hand) to
+  click through the signed-in pages at 375/820/1280px. The rig never touches
+  the repo. Claude then merges, waits for the deploy and checks production
+  signed out.
+- **Icons:** lucide-react (pinned 1.59.0), line icons at the text's size
+  (`.icon` in globals.css). Emoji are gone from the UI.
+- **Dialogs:** `components/Dialog.tsx` (`<dialog>.showModal()`, `useConfirm`)
+  replaces `window.confirm`/`prompt`. Cancel first, then the action; a
+  destructive action is red and focus starts on Cancel.
+- **Type scale:** `.t-page`, `.t-section`, `.t-card`, `.t-label`, `.t-eyebrow`
+  in globals.css, all sentence case. ALL CAPS stays for the big moments: the
+  landing hero, the workout title, Go mode, the class code and the main lime
+  buttons. Same tokens, fonts and colors; the parked visual revamp is still parked.

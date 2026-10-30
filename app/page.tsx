@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Zap } from "lucide-react";
 import { Layout } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
@@ -20,8 +21,8 @@ export default async function Landing({ searchParams }: { searchParams: Search }
   return (
     <Layout>
       <div className="text-center pt-4">
-        <div className="inline-block bg-[rgba(200,255,0,0.12)] text-accent text-[11px] font-semibold tracking-[2px] uppercase px-3.5 py-1.5 rounded-full border border-[rgba(200,255,0,0.25)] mb-5">
-          ⚡ AI-Powered PE Workouts
+        <div className="inline-flex items-center gap-1.5 bg-[rgba(200,255,0,0.12)] text-accent text-[13px] font-semibold px-3.5 py-1.5 rounded-full border border-[rgba(200,255,0,0.25)] mb-5">
+          <Zap className="icon" /> AI-powered PE workouts
         </div>
 
         <h1 className="font-display text-[clamp(52px,12vw,88px)] font-black leading-[0.92] uppercase tracking-[-2px] mb-5">

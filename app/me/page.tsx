@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { Card, CardTitle, Layout } from "@/components/ui";
 import { AccountBar } from "@/components/teacher/AccountBar";
 import { JoinClassForm, NewClassForm } from "@/components/teacher/TeacherControls";
@@ -35,7 +36,7 @@ export default async function StudentHome() {
     <Layout>
       <AccountBar account={account} />
 
-      <div className="font-display text-[42px] font-black uppercase tracking-[-1px] leading-none mb-2">Hey {firstName}</div>
+      <h1 className="t-page mb-2">Hey {firstName}</h1>
       <div className="text-muted text-[15px] mb-6">Enter your class code to get today&apos;s workout.</div>
 
       <Card>
@@ -47,7 +48,7 @@ export default async function StudentHome() {
 
       {joined.length > 0 && (
         <section className="mt-8">
-          <div className="font-display text-[22px] font-bold uppercase tracking-[1px] mb-3">Your classes</div>
+          <h2 className="t-section mb-3">Your classes</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {joined.map((c) => (
               <Link
@@ -55,9 +56,9 @@ export default async function StudentHome() {
                 href={`/c/${c.code}`}
                 className="block bg-surface border border-border rounded-xl p-5 no-underline text-text transition-[border-color] duration-150 hover:border-accent focus-visible:border-accent"
               >
-                <div className="font-display text-[22px] font-bold uppercase leading-tight">{classLabel(c)}</div>
+                <div className="t-card">{classLabel(c)}</div>
                 <div className="text-muted text-[13px] mt-1">{c.config.duration} min · {c.config.intensity} · {c.config.focus}</div>
-                <div className="text-accent text-[14px] font-semibold mt-3">Start a workout →</div>
+                <div className="text-accent text-[14px] font-semibold mt-3 inline-flex items-center gap-1">Start a workout <ArrowRight className="icon" /></div>
               </Link>
             ))}
           </div>
@@ -65,7 +66,7 @@ export default async function StudentHome() {
       )}
 
       <section className="mt-8">
-        <div className="font-display text-[22px] font-bold uppercase tracking-[1px] mb-1">Your own training</div>
+        <h2 className="t-section mb-1">Your own training</h2>
         <div className="text-muted text-[14px] mb-3">
           A personal class only you can use, with your own settings. Good for workouts outside PE.
         </div>
@@ -73,10 +74,10 @@ export default async function StudentHome() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             {personal.map((c) => (
               <div key={c.code} className="bg-surface border border-border rounded-xl p-5">
-                <div className="font-display text-[22px] font-bold uppercase leading-tight">{classLabel(c)}</div>
+                <div className="t-card">{classLabel(c)}</div>
                 <div className="text-muted text-[13px] mt-1">{c.config.duration} min · {c.config.intensity} · {c.config.focus}</div>
                 <div className="flex gap-4 mt-3 text-[14px] font-semibold">
-                  <Link href={`/c/${c.code}`} className="text-accent no-underline">Start a workout →</Link>
+                  <Link href={`/c/${c.code}`} className="text-accent no-underline inline-flex items-center gap-1">Start a workout <ArrowRight className="icon" /></Link>
                   <Link href={`/classes/${c.code}`} className="text-muted no-underline hover:text-text">Settings</Link>
                 </div>
               </div>
@@ -100,7 +101,7 @@ export default async function StudentHome() {
       </section>
 
       <section className="mt-10">
-        <div className="font-display text-[22px] font-bold uppercase tracking-[1px] mb-3">Your workouts</div>
+        <h2 className="t-section mb-3">Your workouts</h2>
         {mine.length === 0 ? (
           <div className="text-muted text-[14px]">Nothing yet. Your workouts will show up here.</div>
         ) : (

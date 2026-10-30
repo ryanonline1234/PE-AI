@@ -48,7 +48,7 @@ export function Tabs({ tabs, initial }: { tabs: TabDef[]; initial?: string }) {
             onClick={() => pick(t.id)}
             onKeyDown={(e) => onKey(e, i)}
             className={cn(
-              "px-4 py-3 -mb-px border-b-2 bg-transparent font-display text-[16px] font-bold uppercase tracking-[0.5px] cursor-pointer whitespace-nowrap transition-colors",
+              "px-4 py-3 -mb-px border-b-2 bg-transparent font-display text-[18px] font-bold cursor-pointer whitespace-nowrap transition-colors",
               active === t.id ? "border-accent text-text" : "border-transparent text-muted hover:text-text"
             )}
           >

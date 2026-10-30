@@ -11,6 +11,7 @@
 // Remount it (React `key`) when the class changes; it owns its own form state.
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { Eye, RefreshCw } from "lucide-react";
 import { apiClarifyClass, apiGenerateWorkoutStream, apiSaveBackground, apiSaveClass, apiUpdateSession } from "@/lib/api";
 import { applyPreset, type SettingPreset } from "@/lib/presets";
 import { configSignature, DEFAULT_CONFIG, withoutCalorieTargets } from "@/lib/class-config";
@@ -203,7 +204,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
     <>
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5 lg:items-start">
       <Card>
-        <CardTitle>{personal ? "Workout Parameters" : sessionDate ? "Session Settings" : "Default Settings"}</CardTitle>
+        <CardTitle>{personal ? "Workout settings" : sessionDate ? "Session settings" : "Default settings"}</CardTitle>
         {!personal && !sessionDate && (
           <div className="text-muted text-[13px] leading-[1.5] -mt-3 mb-5">
             Students get these on days without a session. New sessions start from them.
@@ -252,13 +253,13 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
 
       {check ? (
         <Card style={{ borderColor: "var(--accent2)" }}>
-          <div className="text-[11px] font-semibold tracking-[2px] uppercase text-accent2 mb-2">
+          <div className="t-eyebrow text-accent2 mb-2">
             AI check{check.round > 1 ? ` · round ${check.round}` : ""}
           </div>
           <div className="text-[15px] leading-[1.6] mb-5">{check.summary}</div>
           {check.questions.length > 0 && (
             <div className="mb-5">
-              <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-3">
+              <div className="t-label mb-3">
                 A few things to pin down
               </div>
               <QuestionList
@@ -312,13 +313,13 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
 
       {saveMsg && !sample && !personal && (
         <BtnSecondary style={{ marginTop: 12 }} onClick={previewSample}>
-          👀 Preview a sample workout
+          <Eye className="icon" /> Preview a sample workout
         </BtnSecondary>
       )}
       {sample && (
         <div className="mt-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="font-display text-[22px] font-bold uppercase tracking-[1px]">Sample workout</div>
+            <h2 className="t-section">Sample workout</h2>
             <button
               type="button"
               onClick={closeSample}
@@ -340,7 +341,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
             variant="preview"
           />
           {!sampleStreaming && (
-            <BtnSecondary onClick={previewSample}>↻ Another sample</BtnSecondary>
+            <BtnSecondary onClick={previewSample}><RefreshCw className="icon" /> Another sample</BtnSecondary>
           )}
         </div>
       )}

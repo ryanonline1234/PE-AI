@@ -7,6 +7,7 @@
 //   SessionSpecificsCard one session's specifics, asked after the background
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { ArrowRight, Check, ChevronDown, Plus, Search, Sparkles } from "lucide-react";
 import { apiResearch, apiSaveBackground, apiUpdateSession } from "@/lib/api";
 import { MAX_BACKGROUND, MAX_SOURCES, MAX_SPECIFICS } from "@/lib/class-config";
 import type { ClassConfig, PinnedSource } from "@/lib/types";
@@ -25,7 +26,7 @@ function SaveRow({ dirty, saving, saved, error, label, onSave }: {
     <>
       <BtnPrimary onClick={onSave} disabled={!dirty || saving}>{saving ? "Saving…" : label}</BtnPrimary>
       <div className="text-[12px] text-muted text-center mt-2 min-h-[18px]">
-        {dirty ? "Unsaved changes" : saved ? "✓ Saved. The next workouts use it." : ""}
+        {dirty ? "Unsaved changes" : saved ? <><Check className="icon text-accent" /> Saved. The next workouts use it.</> : ""}
       </div>
       {error && <Alert type="error">{error}</Alert>}
     </>
@@ -81,7 +82,7 @@ export function AIBackgroundCard({ code, config }: {
             onCancel={() => setConsulting(false)}
           />
         ) : (
-          <BtnSecondary style={{ marginBottom: 16 }} onClick={() => setConsulting(true)}>✨ Help me write it</BtnSecondary>
+          <BtnSecondary style={{ marginBottom: 16 }} onClick={() => setConsulting(true)}><Sparkles className="icon" /> Help me write it</BtnSecondary>
         )}
         <SaveRow dirty={dirty} saving={saving} saved={saved} error={error} label="Save background" onSave={save} />
       </Card>
@@ -121,10 +122,10 @@ function Research({ config, pinned, onPinned }: {
     <details className="group bg-surface border border-border rounded-xl mb-4" open={pinned.length > 0 || undefined}>
       <summary className="list-none cursor-pointer px-6 py-5 flex items-center justify-between gap-3">
         <span>
-          <span className="font-display text-[16px] font-bold uppercase tracking-[0.5px] text-muted">Research trusted sites</span>
-          <span className="ml-2 text-[11px] font-semibold uppercase tracking-[1px] text-muted border border-border rounded-full px-2 py-0.5">Optional</span>
+          <span className="t-card">Research trusted sites</span>
+          <span className="ml-2 text-[12px] font-semibold text-muted border border-border rounded-full px-2 py-0.5 align-[3px]">Optional</span>
         </span>
-        <span className="text-muted transition-transform group-open:rotate-180">▾</span>
+        <ChevronDown className="icon text-muted transition-transform group-open:rotate-180" />
       </summary>
       <div className="px-6 pb-6">
         <div className="text-muted text-[13px] leading-[1.5] mb-3">
@@ -133,7 +134,7 @@ function Research({ config, pinned, onPinned }: {
         </div>
         <TextInput value={topic} onChange={(v) => setTopic(v.slice(0, 200))} placeholder="e.g. ACL injury prevention for volleyball" className="mb-2.5" />
         <BtnSecondary onClick={search} disabled={searching || !topic.trim()}>
-          {searching ? "Searching trusted sites…" : "🔎 Search"}
+          {searching ? "Searching trusted sites…" : <><Search className="icon" /> Search</>}
         </BtnSecondary>
         {error && <Alert type="error">{error}</Alert>}
         {findings && findings.length === 0 && (
@@ -151,11 +152,11 @@ function Research({ config, pinned, onPinned }: {
                     disabled={!on && pinned.length >= MAX_SOURCES}
                     aria-pressed={on}
                     className={cn(
-                      "rounded-full border px-3 py-1 text-[12px] font-medium cursor-pointer shrink-0 disabled:opacity-45 disabled:cursor-not-allowed",
+                      "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-medium cursor-pointer shrink-0 disabled:opacity-45 disabled:cursor-not-allowed",
                       on ? "border-accent2 bg-[rgba(0,229,255,0.1)] text-accent2" : "border-border bg-surface text-muted"
                     )}
                   >
-                    {on ? "✓ Pinned" : "+ Pin"}
+                    {on ? <><Check className="icon" />Pinned</> : <><Plus className="icon" />Pin</>}
                   </button>
                 </FindingLine>
               );
@@ -164,7 +165,7 @@ function Research({ config, pinned, onPinned }: {
         )}
         {pinned.length > 0 && (
           <div className="mt-5">
-            <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-2">Pinned research</div>
+            <div className="t-label mb-2">Pinned research</div>
             <div className="flex flex-col gap-2">
               {pinned.map((f) => (
                 <FindingLine key={`${f.url} ${f.takeaway}`} f={f}>
@@ -222,8 +223,8 @@ export function SessionSpecificsCard({ code, date, config, classConfig }: {
         {(classConfig.sources ?? []).length > 0 && (
           <div className="text-muted text-[13px] mb-3">+ {classConfig.sources!.length} pinned research finding{classConfig.sources!.length === 1 ? "" : "s"}</div>
         )}
-        <Link href={`/classes/${code}?tab=ai`} className="text-accent text-[14px]">
-          {background ? "Edit on the class page →" : "Add it on the class page →"}
+        <Link href={`/classes/${code}?tab=ai`} className="text-accent text-[14px] inline-flex items-center gap-1">
+          {background ? "Edit on the class page" : "Add it on the class page"} <ArrowRight className="icon" />
         </Link>
       </Card>
 
@@ -247,7 +248,7 @@ export function SessionSpecificsCard({ code, date, config, classConfig }: {
             onCancel={() => setConsulting(false)}
           />
         ) : (
-          <BtnSecondary style={{ marginBottom: 16 }} onClick={() => setConsulting(true)}>✨ Ask me about this session</BtnSecondary>
+          <BtnSecondary style={{ marginBottom: 16 }} onClick={() => setConsulting(true)}><Sparkles className="icon" /> Ask me about this session</BtnSecondary>
         )}
         <SaveRow dirty={dirty} saving={saving} saved={saved} error={error} label="Save specifics" onSave={save} />
       </Card>

@@ -23,6 +23,10 @@ writes to the production database — that's fine for test classes, don't bulk-e
 ## Conventions worth keeping
 - **Design tokens live in `app/globals.css`** (`--accent` lime, Barlow Condensed
   display + DM Sans body, loaded through `next/font` in `app/layout.tsx`). Keep the look.
+  Headings use the sentence-case type scale there (`.t-page` … `.t-eyebrow`);
+  ALL CAPS only for the hero, workout title, Go mode, class code and lime buttons.
+  Icons are lucide-react with `className="icon"`, never emoji. Confirmations use
+  `useConfirm` from `components/Dialog.tsx`, never `window.confirm`.
 - **All AI + DB access is server-side** in `app/api/*`. The browser only talks to
   our routes. `x-internal-secret` is obscurity, not security — rate limits
   (`lib/rate-limit.ts`, Postgres function `rate_limit_check`) are the real cap.
@@ -69,8 +73,9 @@ writes to the production database — that's fine for test classes, don't bulk-e
 - **"Today" for reports is the browser's time zone**, defaulting to America/Los_Angeles.
 
 ## Don'ts
-- Don't push to `main` without Ryan's OK (it deploys). Work on a branch; Vercel
-  builds a preview per push.
+- Don't push to `main` directly (it deploys). Work on a branch → PR. Since
+  2026-10-29 Ryan doesn't open previews: Claude tests each PR itself (harness,
+  local signed-in rig, build) and merges it, then checks production. See DECISIONS.
 - Don't add `next/image` or student accounts without a decision in `DECISIONS.md`
   (minors' data; the FitTrack merge plan in `~/Archive/peai-unified` is parked).
 - Don't revert to Haiku 4.5 / the dated id / DeepSeek, or to one-document JSON
