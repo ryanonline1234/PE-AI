@@ -6,7 +6,8 @@ import { Card, Layout } from "@/components/ui";
 import { AccountBar } from "@/components/teacher/AccountBar";
 import { FileChips, PresetList } from "@/components/teacher/TeacherControls";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
-import { classLabel, dayKey, dayLabel, loadClasses, loadFiling, loadPresets, loadReviews, loadWorkouts } from "@/lib/teacher-data";
+import { classLabel, dayKey, dayLabel, loadClasses, loadFiling, loadPresets, loadReviews, loadSessionsBetween, loadWorkouts } from "@/lib/teacher-data";
+import { addDays, schoolDate, schoolWeekOf } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Your classes — PE.AI", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -22,12 +23,17 @@ export default async function TeacherHome() {
   const classes = owned.filter((c) => c.kind === "class");
   const space = owned.find((c) => c.kind === "personal");
   const codes = classes.map((c) => c.code);
-  const [recent, reviews, mine, filing, presets] = await Promise.all([
+  // This week across every active class (docs/04 T4).
+  const todayKey = schoolDate();
+  const weekStart = schoolWeekOf(todayKey);
+  const weekDates = [0, 1, 2, 3, 4].map((i) => addDays(weekStart, i));
+  const [recent, reviews, mine, filing, presets, weekSessions] = await Promise.all([
     loadWorkouts({ classCodes: codes, sinceDays: 30, limit: 1000 }),
     loadReviews(codes, 30),
     loadWorkouts({ createdBy: account.id, limit: 40 }),
     loadFiling(classes),
     loadPresets(),
+    loadSessionsBetween(classes.filter((c) => !c.archived).map((c) => c.id), weekDates[0], weekDates[4]),
   ]);
 
   const today = dayKey(new Date().toISOString());
@@ -119,6 +125,48 @@ export default async function TeacherHome() {
             ))}
           </div>
         </details>
+      )}
+
+      {active.length > 0 && (
+        <>
+          <h2 className="t-section mt-10 mb-1">This week</h2>
+          <div className="text-muted text-[14px] mb-4">Each class&apos;s plan by day. Blank days use the class&apos;s default settings.</div>
+          <div className="overflow-x-auto -mx-4 px-4">
+            <table className="w-full min-w-[560px] border-separate border-spacing-0 text-[13px]">
+              <thead>
+                <tr>
+                  <th className="text-left font-semibold text-muted pb-2 pr-3">Class</th>
+                  {weekDates.map((d) => (
+                    <th key={d} className={`text-left font-semibold pb-2 px-2 ${d === todayKey ? "text-accent" : "text-muted"}`}>
+                      {new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })} {Number(d.slice(8))}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {active.map((c) => (
+                  <tr key={c.code}>
+                    <td className="border-t border-border py-2.5 pr-3 align-top">
+                      <Link href={`/classes/${c.code}?tab=sessions`} className="font-semibold text-text no-underline hover:text-accent">{classLabel(c)}</Link>
+                    </td>
+                    {weekDates.map((d) => {
+                      const s = weekSessions.find((x) => x.class_id === c.id && x.session_date === d);
+                      return (
+                        <td key={d} className={`border-t border-border py-2.5 px-2 align-top ${d === todayKey ? "bg-[rgba(200,255,0,0.05)]" : ""}`}>
+                          {s ? (
+                            <Link href={`/classes/${c.code}/s/${d}`} className="text-text no-underline hover:text-accent">{s.name || "Untitled session"}</Link>
+                          ) : (
+                            <span className="text-border">–</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <h2 className="t-section mt-10 mb-1">Presets</h2>

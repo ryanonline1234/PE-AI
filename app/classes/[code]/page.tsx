@@ -7,13 +7,15 @@ import { Card, CardTitle, Layout } from "@/components/ui";
 import { ClassEditor } from "@/components/ClassEditor";
 import { AIBackgroundCard } from "@/components/AIContext";
 import { TodayPanel } from "@/components/teacher/TodayPanel";
+import { WeekPlanner } from "@/components/teacher/WeekPlanner";
 import { Tabs } from "@/components/Tabs";
 import { ArchiveToggle, CopyButton, FileToggle, LabelEditor, PlanSessionForm } from "@/components/teacher/TeacherControls";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
-import { addDays, schoolDate, weekdayOf } from "@/lib/time";
+import { addDays, isDateKey, mondayOf, schoolDate, schoolWeekOf, weekdayOf } from "@/lib/time";
 import type { ClassSession } from "@/lib/types";
 import {
-  classLabel, dayKey, dayLabel, loadClass, loadFiling, loadPresets, loadReviews, loadRoster, loadSessions, loadWorkouts, loadWorkoutsByIds, longDayLabel, timeLabel,
+  classLabel, dayKey, dayLabel, loadClass, loadClasses, loadFiling, loadPresets, loadReviews, loadRoster, loadSessions, loadSessionsBetween,
+  loadWorkouts, loadWorkoutsByIds, longDayLabel, timeLabel,
   type WorkoutRow,
 } from "@/lib/teacher-data";
 import { DEFAULT_CONFIG } from "@/lib/class-config";
@@ -22,7 +24,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Class — PE.AI", robots: { index: false } };
 
 type Params = Promise<{ code: string }>;
-type Search = Promise<{ tab?: string }>;
+type Search = Promise<{ tab?: string; week?: string }>;
 
 // The owner's page for one class: a teacher's class (tabs on iPad and computer:
 // Sessions, Settings, AI background, Students, Workouts; one scroll on phones)
@@ -38,14 +40,21 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
   if (!cls || cls.owner_id !== account.id) notFound();
   const personal = cls.kind === "personal";
   const today = schoolDate();
+  const { tab, week } = await searchParams;
+  // The week grid (docs/04 T4): this school week unless ?week= picks another.
+  const thisWeek = schoolWeekOf(today);
+  const weekStart = isDateKey(week) ? mondayOf(week) : thisWeek;
+  const weekEnd = addDays(weekStart, 4);
 
-  const [recent, reviews, filing, roster, sessions, presets] = await Promise.all([
+  const [recent, reviews, filing, roster, sessions, presets, weekSessions, myClasses] = await Promise.all([
     loadWorkouts({ classCodes: [code], sinceDays: personal ? 90 : 14, limit: 300 }),
     personal ? Promise.resolve([]) : loadReviews([code], 14),
     loadFiling([cls]),
     personal ? Promise.resolve([]) : loadRoster(cls.id),
     personal ? Promise.resolve([]) : loadSessions(cls.id, addDays(today, -14)),
     personal ? Promise.resolve([]) : loadPresets(),
+    personal ? Promise.resolve([]) : loadSessionsBetween([cls.id], weekStart, weekEnd),
+    personal ? Promise.resolve([]) : loadClasses(),
   ]);
   const filed = await loadWorkoutsByIds([...filing.keys()]);
   const filedIds = new Set(filed.map((w) => w.id));
@@ -58,10 +67,20 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
     byDay.set(k, [...(byDay.get(k) ?? []), w]);
   }
 
-  // Sessions (teacher classes): today's, the ones coming up, the last two weeks.
+  // Sessions (teacher classes): the week grid, then what's planned after it and
+  // the last two weeks, each outside the week shown.
   const todaySession = sessions.find((x) => x.session_date === today) ?? null;
-  const upcoming = sessions.filter((x) => x.session_date > today);
-  const past = sessions.filter((x) => x.session_date < today).reverse();
+  const inWeek = (d: string) => d >= weekStart && d <= weekEnd;
+  const upcoming = sessions.filter((x) => x.session_date > today && !inWeek(x.session_date));
+  const past = sessions.filter((x) => x.session_date < today && !inWeek(x.session_date)).reverse();
+  const weekDays = [0, 1, 2, 3, 4].map((i) => {
+    const date = addDays(weekStart, i);
+    const s = weekSessions.find((x) => x.session_date === date);
+    return { date, session: s ? { name: s.name ?? "", summary: `${s.config.duration} min · ${s.config.intensity} · ${s.config.focus}` } : null };
+  });
+  const otherClasses = myClasses
+    .filter((c) => c.owner_id === account.id && c.kind === "class" && !c.archived && c.code !== code)
+    .map((c) => ({ code: c.code, label: classLabel(c) }));
   const sessionNames = new Map(sessions.map((x) => [x.id, x.name || "Untitled session"]));
   const taken = new Set(sessions.map((x) => x.session_date));
   let planDate = today; // the next school day (Mon–Fri) without a session
@@ -185,18 +204,17 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
         <div className="text-muted text-[14px] mb-4">
           Each day can have its own settings. On a day without a session, students get the default settings.
         </div>
-        <div className="flex flex-col gap-2">
-          {todaySession ? (
-            <SessionLine s={todaySession} code={code} highlight />
-          ) : (
-            <div className="border border-dashed border-border rounded-xl px-4 py-3 text-[14px] text-muted">
-              No session today: students get the default settings.
+        <WeekPlanner code={code} today={today} weekStart={weekStart} thisWeek={thisWeek} days={weekDays} otherClasses={otherClasses} />
+        {upcoming.length > 0 && (
+          <>
+            <div className="t-label mb-2">Coming up</div>
+            <div className="flex flex-col gap-2">
+              {upcoming.map((x) => <SessionLine key={x.id} s={x} code={code} />)}
             </div>
-          )}
-          {upcoming.map((x) => <SessionLine key={x.id} s={x} code={code} />)}
-        </div>
+          </>
+        )}
         <Card className="mt-4">
-          <CardTitle>Plan a session</CardTitle>
+          <CardTitle>Plan any day</CardTitle>
           <PlanSessionForm code={code} defaultDate={planDate} minDate={today} copyOptions={copyOptions} presets={presets} />
         </Card>
         {past.length > 0 && (
@@ -291,7 +309,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
         />
       )}
       <Tabs
-        initial={(await searchParams).tab}
+        initial={tab}
         tabs={[
           { id: "sessions", label: "Sessions", content: sessionsTab },
           { id: "settings", label: "Settings", content: <ClassEditor code={code} initialConfig={cls.config} kind={cls.kind} classConfig={cls.config} presets={presets} /> },
@@ -324,11 +342,11 @@ function WorkoutLine({ w, code, ownerId, filed, showDay = false }: {
   );
 }
 
-function SessionLine({ s, code, highlight = false }: { s: ClassSession; code: string; highlight?: boolean }) {
+function SessionLine({ s, code }: { s: ClassSession; code: string }) {
   return (
     <Link
       href={`/classes/${code}/s/${s.session_date}`}
-      className={`flex items-center justify-between gap-3 bg-surface border rounded-xl px-4 py-3 no-underline text-text hover:border-accent ${highlight ? "border-accent" : "border-border"}`}
+      className="flex items-center justify-between gap-3 bg-surface border border-border rounded-xl px-4 py-3 no-underline text-text hover:border-accent"
     >
       <div className="min-w-0">
         <div className="t-eyebrow text-muted">{dayLabel(s.session_date)}</div>

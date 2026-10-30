@@ -77,3 +77,14 @@ export function addDays(key: string, days: number): string {
 export function weekdayOf(key: string): number {
   return new Date(`${key}T12:00:00Z`).getUTCDay();
 }
+
+/** The Monday of the week `key` falls in (weeks run Monday to Sunday). */
+export function mondayOf(key: string): string {
+  return addDays(key, -((weekdayOf(key) + 6) % 7));
+}
+
+/** The school week to show for a day: its own week, or the coming one on a weekend. */
+export function schoolWeekOf(key: string): string {
+  const wd = weekdayOf(key);
+  return mondayOf(wd === 6 ? addDays(key, 2) : wd === 0 ? addDays(key, 1) : key);
+}

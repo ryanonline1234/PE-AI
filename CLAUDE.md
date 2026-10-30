@@ -61,6 +61,11 @@ writes to the production database — that's fine for test classes, don't bulk-e
   named sets of any settings + AI background, **copied in** (never linked) to a
   class, a session (`copyFrom: "preset:<id>"`), a new class (`presetId`), or all
   active classes (`/api/presets/apply`, default settings only, sessions untouched).
+- **Teacher UI (docs/04, DECISIONS 2026-10-29):** Today panel
+  (`components/teacher/TodayPanel.tsx`), projector (`/classes/CODE/projector`),
+  setup (`/teacher/new`), week grid + `/api/class-sessions/copy`
+  (`components/teacher/WeekPlanner.tsx`). Any editor with unsaved state calls
+  `useUnsavedGuard(dirty)` and renders what it returns.
 - **Student free text is sanitized** before it reaches the model, and **names never
   reach the model** (workout prompt and teacher report are name-free).
 - **The AI talks back.** Teacher check (`/api/clarify-class`) stores a confirmed
