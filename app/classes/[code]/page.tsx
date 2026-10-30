@@ -280,7 +280,7 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
   return (
     <Layout backHref={home} backLabel="Classes" wide>
       <div className="mb-6 md:max-w-[620px]"><LabelEditor code={code} label={cls.label ?? ""} /></div>
-      {!cls.archived && (
+      {(
         <TodayPanel
           code={code}
           dateLabel={longDayLabel(today)}

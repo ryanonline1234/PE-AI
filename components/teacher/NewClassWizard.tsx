@@ -73,7 +73,8 @@ function NameStep({ presets }: { presets: { id: string; name: string }[] }) {
     setBusy(true); setError("");
     try {
       const { code } = await apiCreateClass(label, presetId || undefined);
-      router.push(stepHref(code, "settings"));
+      // Replace, so Back from step 2 can't land on a blank step 1 and make a second class.
+      router.replace(stepHref(code, "settings"));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setBusy(false);
@@ -111,7 +112,8 @@ function SettingsStep({ cls }: { cls: WizardClass }) {
   const [config, setConfig] = useState<ClassConfig>(start);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const leaveGuard = useUnsavedGuard(configSignature(config) !== configSignature(start) && !busy);
+  const dirty = configSignature(config) !== configSignature(start);
+  const leaveGuard = useUnsavedGuard(dirty && !busy);
 
   async function next() {
     setBusy(true); setError("");
@@ -133,9 +135,11 @@ function SettingsStep({ cls }: { cls: WizardClass }) {
       </div>
       <SettingsFields config={config} onChange={(key, value) => setConfig((c) => ({ ...c, [key]: value }))} />
       <BtnPrimary onClick={next} disabled={busy}>{busy ? "Saving…" : <>Save and continue <ArrowRight className="icon" /></>}</BtnPrimary>
-      <BtnSecondary style={{ marginTop: 10 }} onClick={() => router.push(stepHref(cls.code, "background"))} disabled={busy}>
-        Keep these and continue
-      </BtnSecondary>
+      {!dirty && (
+        <BtnSecondary style={{ marginTop: 10 }} onClick={() => router.push(stepHref(cls.code, "background"))} disabled={busy}>
+          Keep these and continue
+        </BtnSecondary>
+      )}
       {error && <Alert type="error">{error}</Alert>}
     </Card>
   );
