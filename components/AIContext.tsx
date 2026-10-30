@@ -12,6 +12,7 @@ import { apiResearch, apiSaveBackground, apiUpdateSession } from "@/lib/api";
 import { MAX_BACKGROUND, MAX_SOURCES, MAX_SPECIFICS } from "@/lib/class-config";
 import type { ClassConfig, PinnedSource } from "@/lib/types";
 import { ConsultFlow } from "@/components/ConsultFlow";
+import { useUnsavedGuard } from "@/components/UnsavedGuard";
 import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle, Field, Textarea, TextInput } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,7 @@ export function AIBackgroundCard({ code, config }: {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const dirty = background.trim() !== savedBackground.trim() || !sameList(pinned, savedSources);
+  const leaveGuard = useUnsavedGuard(dirty);
 
   async function save() {
     setSaving(true); setError(""); setSaved(false);
@@ -61,6 +63,7 @@ export function AIBackgroundCard({ code, config }: {
 
   return (
     <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+      {leaveGuard}
       <Card>
         <CardTitle>Background for the AI</CardTitle>
         <div className="text-muted text-[13px] leading-[1.5] -mt-3 mb-5">
@@ -197,6 +200,7 @@ export function SessionSpecificsCard({ code, date, config, classConfig }: {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const dirty = specifics.trim() !== savedSpecifics.trim();
+  const leaveGuard = useUnsavedGuard(dirty);
 
   async function save() {
     setSaving(true); setError(""); setSaved(false);
@@ -211,6 +215,7 @@ export function SessionSpecificsCard({ code, date, config, classConfig }: {
 
   return (
     <div className="lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
+      {leaveGuard}
       <Card>
         <CardTitle>Class background</CardTitle>
         {background ? (

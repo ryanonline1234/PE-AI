@@ -22,6 +22,10 @@ import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle } from "@/components/u
 import { WorkoutScreen } from "@/components/WorkoutScreen";
 import { SettingsFields } from "@/components/SettingsFields";
 import { PresetBar } from "@/components/PresetBar";
+import { useUnsavedGuard } from "@/components/UnsavedGuard";
+
+/** What a save writes that a teacher would miss if they left: the settings and the AI's notes. */
+const editKey = (c: ClassConfig) => JSON.stringify([configSignature(c), c.clarifications ?? []]);
 
 /** The teacher's AI check in progress: what the AI said, and the answers so far. */
 interface CheckState extends ClassCheck {
@@ -46,6 +50,9 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
   // Older summaries still state a calorie target; don't show one that no longer applies.
   const start = withoutCalorieTargets({ ...DEFAULT_CONFIG, ...initialConfig });
   const [config, setConfig] = useState<ClassConfig>(start);
+  const [savedKey, setSavedKey] = useState(() => editKey(start));
+  const dirty = editKey(config) !== savedKey;
+  const leaveGuard = useUnsavedGuard(dirty);
   // A saved summary describes exactly the settings it was saved with.
   const [checkedSig, setCheckedSig] = useState(start.summary ? configSignature(start) : "");
   const [check, setCheck] = useState<CheckState | null>(null);
@@ -76,6 +83,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
       if (sessionDate) await apiUpdateSession(code, sessionDate, { config: toSave });
       else await apiSaveClass(code, toSave);
       setConfig(toSave);
+      setSavedKey(editKey(toSave));
       setSaveMsg(
         personal ? "Saved! Your next workout will use these settings."
         : sessionDate ? "Saved! Students get these settings that day."
@@ -203,6 +211,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
 
   return (
     <>
+      {leaveGuard}
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5 lg:items-start">
       <Card>
         <CardTitle>{personal ? "Workout settings" : sessionDate ? "Session settings" : "Default settings"}</CardTitle>
@@ -299,6 +308,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
             : personal ? "Save Class Settings" : sessionDate ? "Save Session Settings" : "Save Default Settings"}
         </BtnPrimary>
       )}
+      {dirty && !check && <div className="text-[12px] text-muted text-center mt-2">Unsaved changes</div>}
       {checkError && (
         <>
           <Alert type="error">{checkError}</Alert>

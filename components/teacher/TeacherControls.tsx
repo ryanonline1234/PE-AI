@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { describePreset, type SettingPreset } from "@/lib/presets";
 import { useConfirm } from "@/components/Dialog";
+import { useUnsavedGuard } from "@/components/UnsavedGuard";
 import { cn } from "@/lib/utils";
 
 const input = "w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none";
@@ -21,21 +22,20 @@ function ErrorLine({ msg }: { msg: string }) {
   return msg ? <div className="text-danger text-[13px] mt-2">{msg}</div> : null;
 }
 
+/** A student's new personal class, in one line (teachers use the setup at /teacher/new). */
 export function NewClassForm({
   placeholder = "Class name, e.g. Period 3 · Freshman PE",
   buttonLabel = "+ New class",
-  presets = [],
-}: { placeholder?: string; buttonLabel?: string; presets?: { id: string; name: string }[] }) {
+}: { placeholder?: string; buttonLabel?: string }) {
   const router = useRouter();
   const [label, setLabel] = useState("");
-  const [presetId, setPresetId] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setErr("");
     try {
-      const { code } = await apiCreateClass(label, presetId || undefined);
+      const { code } = await apiCreateClass(label);
       router.push(`/classes/${code}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -54,17 +54,6 @@ export function NewClassForm({
         />
         <button type="submit" className={btn} disabled={busy}>{busy ? "Creating…" : buttonLabel}</button>
       </div>
-      {presets.length > 0 && (
-        <select
-          className={cn(input, "mt-2.5 py-2.5 text-[14px]")}
-          value={presetId}
-          onChange={(e) => setPresetId(e.target.value)}
-          aria-label="Start the new class from"
-        >
-          <option value="">Start from the standard settings</option>
-          {presets.map((p) => <option key={p.id} value={p.id}>Start from preset “{p.name}”</option>)}
-        </select>
-      )}
       <ErrorLine msg={err} />
     </form>
   );
@@ -103,6 +92,7 @@ export function LabelEditor({ code, label }: { code: string; label: string }) {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const dirty = value.trim() !== label;
+  const leaveGuard = useUnsavedGuard(dirty);
   async function save(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -117,6 +107,7 @@ export function LabelEditor({ code, label }: { code: string; label: string }) {
   }
   return (
     <form onSubmit={save} className="flex gap-2.5 items-center">
+      {leaveGuard}
       <input
         className={cn(input, "font-display text-[24px] font-bold py-2")}
         value={value}
@@ -311,6 +302,7 @@ export function SessionNameEditor({ code, date, name }: { code: string; date: st
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState("");
   const dirty = value.trim() !== name;
+  const leaveGuard = useUnsavedGuard(dirty);
   async function save(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setErr("");
@@ -327,6 +319,7 @@ export function SessionNameEditor({ code, date, name }: { code: string; date: st
   }
   return (
     <form onSubmit={save}>
+      {leaveGuard}
       <div className="flex gap-2.5 items-center">
         <input
           className={cn(input, "font-display text-[22px] font-bold py-2")}
