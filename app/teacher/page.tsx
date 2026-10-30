@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Star, Zap } from "lucide-react";
 import { Card, Layout } from "@/components/ui";
 import { AccountBar } from "@/components/teacher/AccountBar";
 import { FileChips, NewClassForm, PresetList } from "@/components/teacher/TeacherControls";
@@ -50,15 +51,15 @@ export default async function TeacherHome() {
     <Layout>
       <AccountBar account={account} />
 
-      <div className="font-display text-[42px] font-black uppercase tracking-[-1px] leading-none mb-2">Your Classes</div>
+      <h1 className="t-page mb-2">Your classes</h1>
       <div className="text-muted text-[15px] mb-6">Each class has its own code. Students sign in with their Mitty account and enter it.</div>
 
       <div className="mb-3"><NewClassForm presets={presets} /></div>
       <Link
         href="/teacher/workout"
-        className="flex items-center justify-center w-full bg-surface2 text-text border border-border rounded-lg px-6 py-3 font-body text-[15px] font-medium no-underline mb-6 hover:border-accent"
+        className="flex items-center justify-center gap-2 w-full bg-surface2 text-text border border-border rounded-lg px-6 py-3 font-body text-[15px] font-medium no-underline mb-6 hover:border-accent"
       >
-        ⚡ Make a workout for myself
+        <Zap className="icon text-accent" /> Make a workout for myself
       </Link>
 
       {active.length === 0 ? (
@@ -78,7 +79,7 @@ export default async function TeacherHome() {
                 className="block bg-surface border border-border rounded-xl p-5 no-underline text-text transition-[border-color] duration-150 hover:border-accent focus-visible:border-accent"
               >
                 <div className="flex items-start justify-between gap-3 mb-1">
-                  <div className="font-display text-[22px] font-bold uppercase leading-tight">{classLabel(c)}</div>
+                  <div className="t-card">{classLabel(c)}</div>
                   <div className="font-display text-[18px] font-bold text-accent tracking-[2px] shrink-0">{c.code}</div>
                 </div>
                 <div className="text-muted text-[13px] mb-4">
@@ -86,13 +87,13 @@ export default async function TeacherHome() {
                 </div>
                 <div className="flex gap-6">
                   {[
-                    [st.today, "today"],
+                    [st.today, "Today"],
                     [st.month, "30 days"],
-                    [st.avg ? `${st.avg}★` : "–", "rating"],
+                    [st.avg ? <span className="inline-flex items-center gap-1">{st.avg}<Star className="w-[0.6em] h-[0.6em] fill-current" aria-label="stars" /></span> : "–", "Rating"],
                   ].map(([v, l]) => (
-                    <div key={l}>
+                    <div key={String(l)}>
                       <div className="font-display text-[26px] font-bold text-accent2 leading-none">{v}</div>
-                      <div className="text-[11px] text-muted uppercase tracking-[0.8px] mt-0.5">{l}</div>
+                      <div className="text-[12px] text-muted mt-0.5">{l}</div>
                     </div>
                   ))}
                 </div>
@@ -115,13 +116,13 @@ export default async function TeacherHome() {
         </details>
       )}
 
-      <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mt-10 mb-1">Presets</div>
+      <h2 className="t-section mt-10 mb-1">Presets</h2>
       <div className="text-muted text-[14px] mb-4">
         Named sets of settings you can start a class or session from, or apply to every class at once.
       </div>
       <PresetList presets={presets} />
 
-      <div className="font-display text-[26px] font-black uppercase tracking-[-0.5px] mt-10 mb-1">My Workouts</div>
+      <h2 className="t-section mt-10 mb-1">My workouts</h2>
       <div className="text-muted text-[14px] mb-4">
         Samples you previewed and workouts you made for yourself. Tap a class to file one under it.
       </div>

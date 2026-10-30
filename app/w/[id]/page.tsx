@@ -60,8 +60,8 @@ export default async function SharedWorkoutPage({ params }: { params: Params }) 
   const makeOwnHref = `/c/${encodeURIComponent(saved.code)}`;
 
   return (
-    <Layout backHref="/" backLabel="← Home">
-      <div className="no-print text-[12px] text-muted uppercase tracking-[1.5px] mb-4">
+    <Layout backHref="/" backLabel="Home">
+      <div className="no-print t-eyebrow text-muted mb-4">
         Class <span className="text-accent">{saved.code}</span> · {made}
       </div>
       <WorkoutScreen

@@ -5,9 +5,11 @@
 // health details: the server drops those sentences and this card says so.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { apiDeleteStudentBrief, apiSaveStudentBrief } from "@/lib/api";
 import { MAX_STUDENT_BRIEF } from "@/lib/student-brief";
 import { ConsultFlow } from "@/components/ConsultFlow";
+import { useConfirm } from "@/components/Dialog";
 import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle, Textarea } from "@/components/ui";
 
 export function MySportCard({ initialBrief }: { initialBrief: string }) {
@@ -19,6 +21,7 @@ export function MySportCard({ initialBrief }: { initialBrief: string }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [confirm, confirmDialog] = useConfirm();
 
   function start(withConsult: boolean) {
     setDraft(saved); setEditing(true); setConsulting(withConsult); setNote(""); setError("");
@@ -38,7 +41,7 @@ export function MySportCard({ initialBrief }: { initialBrief: string }) {
   }
 
   async function remove() {
-    if (!window.confirm("Delete your sport brief? Your workouts stop using it.")) return;
+    if (!(await confirm({ title: "Delete your sport brief?", body: "Your workouts stop using it. You can set it up again anytime.", confirmLabel: "Delete brief", danger: true }))) return;
     setBusy(true); setError(""); setNote("");
     try {
       await apiDeleteStudentBrief();
@@ -52,6 +55,7 @@ export function MySportCard({ initialBrief }: { initialBrief: string }) {
 
   return (
     <Card>
+      {confirmDialog}
       <CardTitle>My sport</CardTitle>
 
       {!editing && saved && (
@@ -70,7 +74,7 @@ export function MySportCard({ initialBrief }: { initialBrief: string }) {
           <div className="text-[15px] leading-[1.55] mb-4">
             Play a sport? Tell the AI about it and every PE workout builds toward it.
           </div>
-          <BtnPrimary onClick={() => start(true)}>✨ Set up my sport</BtnPrimary>
+          <BtnPrimary onClick={() => start(true)}><Sparkles className="icon" /> Set up my sport</BtnPrimary>
         </>
       )}
 
@@ -93,7 +97,7 @@ export function MySportCard({ initialBrief }: { initialBrief: string }) {
             {" "}{draft.length}/{MAX_STUDENT_BRIEF}
           </div>
           {!consulting && (
-            <BtnSecondary style={{ marginBottom: 10 }} onClick={() => setConsulting(true)}>✨ Help me write it</BtnSecondary>
+            <BtnSecondary style={{ marginBottom: 10 }} onClick={() => setConsulting(true)}><Sparkles className="icon" /> Help me write it</BtnSecondary>
           )}
           <div className="flex gap-2.5">
             <BtnSecondary style={{ flex: 1 }} onClick={() => { setEditing(false); setConsulting(false); setDraft(saved); }} disabled={busy}>

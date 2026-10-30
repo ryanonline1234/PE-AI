@@ -57,7 +57,7 @@ export function PresetBar({ presets, config, background, onApply }: {
 
   return (
     <div className="bg-surface2 border border-border rounded-xl p-4 mb-6">
-      <div className="text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-2">Presets</div>
+      <div className="t-label mb-2">Presets</div>
       <div className="flex gap-2 flex-wrap">
         <select
           className={cn(field, "flex-1 min-w-[180px]")}

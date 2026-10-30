@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <Layout backHref="/" backLabel="← Home">
+    <Layout backHref="/" backLabel="Home">
       <Prose title="Terms of Use" updated="October 27, 2026">
         <section>
           <p>

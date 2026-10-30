@@ -28,15 +28,15 @@ export function DayReport({ code }: { code: string }) {
 
   return (
     <div>
-      <div className="font-display text-[22px] font-bold uppercase tracking-[1px] mb-3">Today&apos;s Workout Report</div>
-      <BtnSecondary onClick={generate} disabled={loading}>{loading ? "Generating…" : "Generate Today's Report"}</BtnSecondary>
+      <h2 className="t-section mb-3">Today&apos;s workout report</h2>
+      <BtnSecondary onClick={generate} disabled={loading}>{loading ? "Generating…" : "Generate today's report"}</BtnSecondary>
       {msg && <div className="text-muted text-[14px] mt-3">{msg}</div>}
       {meta && (
         <div className="flex gap-6 mt-4 mb-2 flex-wrap">
-          {[[meta.total, "Responses"], [`${meta.avgRating} / 5`, "Avg Rating"]].map(([val, lbl]) => (
+          {[[meta.total, "Responses"], [`${meta.avgRating} / 5`, "Average rating"]].map(([val, lbl]) => (
             <div key={lbl}>
               <div className="font-display text-[28px] font-bold text-accent2 leading-none">{val}</div>
-              <div className="text-[11px] text-muted uppercase tracking-[0.8px] mt-0.5">{lbl}</div>
+              <div className="text-[12px] text-muted mt-0.5">{lbl}</div>
             </div>
           ))}
         </div>

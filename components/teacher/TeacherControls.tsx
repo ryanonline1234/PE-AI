@@ -4,11 +4,13 @@
 // API route, then refreshes the server-rendered page so lists stay in sync.
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowRight, Check, Plus } from "lucide-react";
 import {
   apiApplyPresetToAll, apiCreateClass, apiCreateSession, apiDeletePreset, apiDeleteSession, apiFileWorkout, apiRenamePreset,
   apiUpdateClass, apiUpdateSession,
 } from "@/lib/api";
 import { describePreset, type SettingPreset } from "@/lib/presets";
+import { useConfirm } from "@/components/Dialog";
 import { cn } from "@/lib/utils";
 
 const input = "w-full bg-surface2 border border-border rounded-lg text-text font-body text-[15px] px-3.5 py-3 outline-none";
@@ -90,7 +92,7 @@ export function JoinClassForm() {
         autoCapitalize="characters"
         autoComplete="off"
       />
-      <button type="submit" className={btn} disabled={busy || code.length < 6}>{busy ? "…" : "Go →"}</button>
+      <button type="submit" className={cn(btn, "inline-flex items-center gap-1.5")} disabled={busy || code.length < 6}>{busy ? "…" : <>Go <ArrowRight className="icon" /></>}</button>
     </form>
   );
 }
@@ -116,13 +118,13 @@ export function LabelEditor({ code, label }: { code: string; label: string }) {
   return (
     <form onSubmit={save} className="flex gap-2.5 items-center">
       <input
-        className={cn(input, "font-display text-[24px] font-bold uppercase tracking-[0.5px] py-2")}
+        className={cn(input, "font-display text-[24px] font-bold py-2")}
         value={value}
         onChange={(e) => setValue(e.target.value.slice(0, 60))}
         placeholder="Name this class"
         aria-label="Class name"
       />
-      <button type="submit" className={ghost} disabled={busy || !dirty}>{saved ? "✓ Saved" : "Rename"}</button>
+      <button type="submit" className={ghost} disabled={busy || !dirty}>{saved ? <><Check className="icon" /> Saved</> : "Rename"}</button>
     </form>
   );
 }
@@ -155,7 +157,7 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
       onClick={() => { void navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
       className="bg-[rgba(200,255,0,0.1)] border border-[rgba(200,255,0,0.3)] text-accent px-4 py-2 rounded-md cursor-pointer text-[13px] font-semibold font-body"
     >
-      {copied ? "✓ Copied" : label}
+      {copied ? <><Check className="icon" /> Copied</> : label}
     </button>
   );
 }
@@ -193,11 +195,11 @@ export function FileChips({ workoutId, classes, filedIn }: {
             disabled={busy === c.code}
             aria-pressed={on}
             className={cn(
-              "rounded-full border px-3 py-1 text-[12px] font-medium cursor-pointer transition-colors",
+              "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-medium cursor-pointer transition-colors",
               on ? "border-accent2 bg-[rgba(0,229,255,0.1)] text-accent2" : "border-border bg-surface2 text-muted"
             )}
           >
-            {on ? "✓ " : "+ "}{c.label}
+            {on ? <Check className="icon" /> : <Plus className="icon" />}{c.label}
           </button>
         );
       })}
@@ -227,11 +229,11 @@ export function FileToggle({ code, workoutId, filed }: { code: string; workoutId
       disabled={busy}
       aria-pressed={on}
       className={cn(
-        "rounded-full border px-3 py-1 text-[12px] font-medium cursor-pointer shrink-0",
+        "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-medium cursor-pointer shrink-0",
         on ? "border-accent2 bg-[rgba(0,229,255,0.1)] text-accent2" : "border-border bg-surface2 text-muted"
       )}
     >
-      {on ? "✓ Filed" : "+ File"}
+      {on ? <><Check className="icon" />Filed</> : <><Plus className="icon" />File</>}
     </button>
   );
 }
@@ -327,13 +329,13 @@ export function SessionNameEditor({ code, date, name }: { code: string; date: st
     <form onSubmit={save}>
       <div className="flex gap-2.5 items-center">
         <input
-          className={cn(input, "font-display text-[22px] font-bold uppercase tracking-[0.5px] py-2")}
+          className={cn(input, "font-display text-[22px] font-bold py-2")}
           value={value}
           onChange={(e) => setValue(e.target.value.slice(0, 60))}
           placeholder="Name it, e.g. Volleyball conditioning"
           aria-label="Session name"
         />
-        <button type="submit" className={ghost} disabled={busy || !dirty}>{saved ? "✓ Saved" : "Rename"}</button>
+        <button type="submit" className={ghost} disabled={busy || !dirty}>{saved ? <><Check className="icon" /> Saved</> : "Rename"}</button>
       </div>
       <ErrorLine msg={err} />
     </form>
@@ -344,8 +346,15 @@ export function DeleteSessionButton({ code, date }: { code: string; date: string
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [confirm, confirmDialog] = useConfirm();
   async function remove() {
-    if (!window.confirm("Delete this session? Students get the default settings that day. Workouts already made stay.")) return;
+    const ok = await confirm({
+      title: "Delete this session?",
+      body: "Students get the default settings that day. Workouts already made stay.",
+      confirmLabel: "Delete session",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true); setErr("");
     try {
       await apiDeleteSession(code, date);
@@ -358,6 +367,7 @@ export function DeleteSessionButton({ code, date }: { code: string; date: string
   }
   return (
     <div className="text-right">
+      {confirmDialog}
       <button type="button" onClick={remove} className={ghost} disabled={busy}>{busy ? "Deleting…" : "Delete session"}</button>
       <ErrorLine msg={err} />
     </div>
@@ -374,6 +384,7 @@ export function PresetList({ presets }: { presets: SettingPreset[] }) {
   const [name, setName] = useState("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [confirm, confirmDialog] = useConfirm();
 
   async function run(id: string, fn: () => Promise<string>) {
     setBusy(id); setErr(""); setMsg("");
@@ -396,6 +407,7 @@ export function PresetList({ presets }: { presets: SettingPreset[] }) {
   }
   return (
     <div className="flex flex-col gap-2">
+      {confirmDialog}
       {presets.map((p) => (
         <div key={p.id} className="bg-surface border border-border rounded-xl px-4 py-3">
           {renaming === p.id ? (
@@ -418,8 +430,13 @@ export function PresetList({ presets }: { presets: SettingPreset[] }) {
                   type="button"
                   className={ghost}
                   disabled={busy === p.id}
-                  onClick={() => {
-                    if (!window.confirm(`Apply “${p.name}” to all your classes? Their default settings change; planned sessions stay as they are.`)) return;
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: `Apply “${p.name}” to all your classes?`,
+                      body: "Each active class's default settings change to this preset's. Sessions you already planned stay as they are.",
+                      confirmLabel: "Apply to all",
+                    });
+                    if (!ok) return;
                     void run(p.id, async () => { const r = await apiApplyPresetToAll(p.id); return `Applied “${p.name}” to ${r.applied} class${r.applied === 1 ? "" : "es"}.`; });
                   }}
                 >
@@ -430,8 +447,14 @@ export function PresetList({ presets }: { presets: SettingPreset[] }) {
                   type="button"
                   className={ghost}
                   disabled={busy === p.id}
-                  onClick={() => {
-                    if (!window.confirm(`Delete “${p.name}”? Classes it was applied to keep their settings.`)) return;
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: `Delete “${p.name}”?`,
+                      body: "Classes it was applied to keep their settings.",
+                      confirmLabel: "Delete preset",
+                      danger: true,
+                    });
+                    if (!ok) return;
                     void run(p.id, async () => { await apiDeletePreset(p.id); return "Deleted."; });
                   }}
                 >

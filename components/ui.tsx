@@ -1,9 +1,11 @@
 "use client";
 
 // Shared UI primitives for PE.AI. Extracted from app/page.tsx so the shared
-// workout page (/w/[id]) renders with the same look. Styling unchanged.
+// workout page (/w/[id]) renders with the same look. Headings and labels use
+// the sentence-case type scale in app/globals.css (.t-page … .t-eyebrow).
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Chip<T extends string>({ label, value, current, onChange }: {
@@ -17,6 +19,7 @@ export function Chip<T extends string>({ label, value, current, onChange }: {
     <button
       type="button"
       onClick={() => onChange(value)}
+      aria-pressed={active}
       className={cn(
         "rounded-lg border px-4 py-2 font-body text-[14px] font-medium cursor-pointer transition-all duration-150",
         active
@@ -32,7 +35,7 @@ export function Chip<T extends string>({ label, value, current, onChange }: {
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="mb-5">
-      <label className="block text-[12px] font-semibold text-muted uppercase tracking-[0.8px] mb-2">
+      <label className="t-label block mb-2">
         {label}
       </label>
       {children}
@@ -50,7 +53,7 @@ export function Card({ children, style, className }: { children: ReactNode; styl
 
 export function CardTitle({ children }: { children: ReactNode }) {
   return (
-    <div className="font-display text-[16px] font-bold uppercase tracking-[0.5px] text-muted mb-[18px]">
+    <div className="t-card mb-4">
       {children}
     </div>
   );
@@ -60,7 +63,7 @@ export function CardTitle({ children }: { children: ReactNode }) {
  * Page chrome: wordmark + optional back control. `onBack` renders a button
  * (in-app navigation); `backHref` renders a link (the shared workout page).
  */
-export function Layout({ onBack, backHref, backLabel = "← Back", wide = false, children }: {
+export function Layout({ onBack, backHref, backLabel = "Back", wide = false, children }: {
   onBack?: () => void;
   backHref?: string;
   backLabel?: string;
@@ -68,7 +71,7 @@ export function Layout({ onBack, backHref, backLabel = "← Back", wide = false,
   wide?: boolean;
   children: ReactNode;
 }) {
-  const backClass = "no-print bg-surface2 border border-border text-muted px-4 py-2 rounded-lg cursor-pointer text-[14px] font-body no-underline";
+  const backClass = "no-print inline-flex items-center gap-1.5 bg-surface2 border border-border text-muted px-4 py-2 rounded-lg cursor-pointer text-[14px] font-body no-underline";
   const width = wide ? "max-w-[740px] md:max-w-[1120px]" : "max-w-[740px]";
   return (
     <div className="min-h-screen flex flex-col items-center px-4 pb-[60px]">
@@ -78,10 +81,10 @@ export function Layout({ onBack, backHref, backLabel = "← Back", wide = false,
           PE<span className="text-accent">.</span>AI
         </Link>
         {onBack && (
-          <button onClick={onBack} className={backClass}>{backLabel}</button>
+          <button onClick={onBack} className={backClass}><ArrowLeft className="icon" />{backLabel}</button>
         )}
         {!onBack && backHref && (
-          <a href={backHref} className={backClass}>{backLabel}</a>
+          <a href={backHref} className={backClass}><ArrowLeft className="icon" />{backLabel}</a>
         )}
       </div>
 
@@ -193,7 +196,7 @@ export function Spinner({ label = "Building your workout…" }: { label?: string
   return (
     <div className="text-center px-5 py-[60px]">
       <div className="w-12 h-12 border-[3px] border-border border-t-accent rounded-full mx-auto mb-5 animate-[pe-spin_0.8s_linear_infinite]" />
-      <div className="font-display text-[22px] font-bold uppercase tracking-[1px] text-muted">
+      <div className="t-section text-muted">
         {label}
       </div>
     </div>
