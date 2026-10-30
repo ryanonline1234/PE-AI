@@ -5,6 +5,7 @@
 import type {
   ClassConfig,
   ConsultResult,
+  PinnedSource,
   QA,
   ResearchResult,
   GenerateWorkoutInput,
@@ -151,7 +152,7 @@ export const apiFileWorkout = (code: string, workoutId: string, filed: boolean) 
 export const apiCreateSession = (code: string, date: string, copyFrom: string | null) =>
   postJson<{ date: string }>("/api/class-sessions", { code, date, copyFrom });
 
-export const apiUpdateSession = (code: string, date: string, patch: { config?: ClassConfig; name?: string }) =>
+export const apiUpdateSession = (code: string, date: string, patch: { config?: ClassConfig; name?: string; specifics?: string }) =>
   postJson<{ ok: true }>("/api/class-sessions", { code, date, ...patch }, "PATCH");
 
 export const apiDeleteSession = (code: string, date: string) =>
@@ -159,8 +160,12 @@ export const apiDeleteSession = (code: string, date: string) =>
 
 // ── Planning help (docs/03) ───────────────────────────────────
 
-/** One round of the sport consult: a draft brief and any questions still open. */
-export const apiConsult = (input: { for: "session" | "student"; topic: string; answers: QA[]; round: number; config?: ClassConfig }) =>
+/** Save a class's AI background and/or pinned research (never its settings). */
+export const apiSaveBackground = (code: string, patch: { background?: string; sources?: PinnedSource[] }) =>
+  postJson<{ success: boolean }>("/api/save-class", { code, ...patch });
+
+/** One round of a consult: the draft text and any questions still open. */
+export const apiConsult = (input: { for: "background" | "session" | "student"; topic: string; answers: QA[]; round: number; config?: ClassConfig }) =>
   postJson<ConsultResult>("/api/consult", input);
 
 /** Search the trusted sites for findings a teacher can pin (teachers only). */

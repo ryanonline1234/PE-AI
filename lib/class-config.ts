@@ -3,7 +3,8 @@ import { isTrustedUrl } from "@/lib/trusted-sources";
 import type { AskQuestion, ClassConfig, PinnedSource, QA } from "@/lib/types";
 
 export const MAX_CLARIFICATIONS = 6;
-export const MAX_BRIEF = 600;
+export const MAX_BACKGROUND = 600;
+export const MAX_SPECIFICS = 600;
 export const MAX_SOURCES = 5;
 
 /** New-class defaults. Plain module (not "use client") so server pages can spread it. */
@@ -15,8 +16,9 @@ export const DEFAULT_CONFIG: ClassConfig = {
   customPrompt: "",
   summary: "",
   clarifications: [],
-  brief: "",
+  background: "",
   sources: [],
+  specifics: "",
 };
 
 function cleanQA(list: unknown, max: number): QA[] {
@@ -77,8 +79,9 @@ export function clampConfig(config: Record<string, unknown>): ClassConfig {
     customPrompt: typeof config.customPrompt === "string" ? config.customPrompt.slice(0, 500) : "",
     summary:      typeof config.summary === "string" ? config.summary.trim().slice(0, 800) : "",
     clarifications: cleanQA(config.clarifications, MAX_CLARIFICATIONS),
-    brief:        typeof config.brief === "string" ? config.brief.trim().slice(0, MAX_BRIEF) : "",
+    background:   typeof config.background === "string" ? config.background.trim().slice(0, MAX_BACKGROUND) : "",
     sources:      cleanSources(config.sources),
+    specifics:    typeof config.specifics === "string" ? config.specifics.trim().slice(0, MAX_SPECIFICS) : "",
   });
 }
 
@@ -107,14 +110,27 @@ export function cleanAnswers(list: unknown): QA[] {
 }
 
 /**
- * The fields the AI check reads. When these change, the teacher's confirmed
- * summary is stale and Save runs the check again.
+ * The settings the AI check confirms. When these change, the teacher's
+ * confirmed summary is stale and Save runs the check again. The background,
+ * research and session specifics are saved on their own and don't re-run it.
  */
 export function configSignature(c: ClassConfig): string {
-  return JSON.stringify([
-    c.duration, c.intensity, c.focus, c.equipment.trim(), c.customPrompt.trim(),
-    (c.brief ?? "").trim(), (c.sources ?? []).map((x) => [x.url, x.takeaway]),
-  ]);
+  return JSON.stringify([c.duration, c.intensity, c.focus, c.equipment.trim(), c.customPrompt.trim()]);
+}
+
+/**
+ * The settings a workout is built from: a session's settings and specifics (or
+ * the class defaults), plus the class's current background and research, which
+ * every session shares (docs/03 §7).
+ */
+export function generationConfig(classConfig: ClassConfig, sessionConfig?: ClassConfig | null): ClassConfig {
+  const base = sessionConfig ?? classConfig;
+  return {
+    ...base,
+    background: classConfig.background ?? "",
+    sources: classConfig.sources ?? [],
+    specifics: sessionConfig?.specifics ?? "",
+  };
 }
 
 /** Prompt lines carrying the teacher's confirmed summary and answers. */
@@ -147,11 +163,14 @@ export function classParamsBlock(c: ClassConfig): string {
 ${c.customPrompt ? `- Additional teacher instructions: ${c.customPrompt}` : "- Additional teacher instructions: none"}${planningLines(c)}`;
 }
 
-/** The brief and pinned research (docs/03), as extra parameter lines. */
+/** The background, session specifics and pinned research (docs/03), as extra parameter lines. */
 function planningLines(c: ClassConfig): string {
   const lines: string[] = [];
-  const brief = (c.brief ?? "").trim();
-  if (brief) lines.push(`- The teacher's brief for this session (build every workout around it):\n  ${brief.replace(/\n+/g, "\n  ")}`);
+  const indent = (t: string) => t.replace(/\n+/g, "\n  ");
+  const background = (c.background ?? "").trim();
+  if (background) lines.push(`- What the teacher wants you to know about this class (keep it in mind for every workout):\n  ${indent(background)}`);
+  const specifics = (c.specifics ?? "").trim();
+  if (specifics) lines.push(`- This session's specifics (build today's workout around them):\n  ${indent(specifics)}`);
   const sources = c.sources ?? [];
   if (sources.length > 0) {
     lines.push(

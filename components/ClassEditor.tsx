@@ -1,21 +1,23 @@
 "use client";
 
 // The class settings editor: parameters, the AI check, "what the AI knows",
-// save, sample preview, and today's report. Used by the class's owner on
-// /classes/[code] (a teacher class's default settings, or a student's personal
-// class) and on /classes/[code]/s/[date] (one session's settings).
+// save, and sample preview. Used by the class's owner on /classes/[code] (a
+// teacher class's default settings, or a student's personal class) and on
+// /classes/[code]/s/[date] (one session's settings). The AI background, session
+// specifics and today's report are their own components (own tabs, own saves).
+// On wide screens: settings on the left, a sticky column with what the AI knows
+// and Save on the right.
 //
 // Remount it (React `key`) when the class changes; it owns its own form state.
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { apiClarifyClass, apiGenerateReport, apiGenerateWorkoutStream, apiSaveClass, apiUpdateSession } from "@/lib/api";
+import { apiClarifyClass, apiGenerateWorkoutStream, apiSaveClass, apiUpdateSession } from "@/lib/api";
 import { configSignature, DEFAULT_CONFIG, withoutCalorieTargets } from "@/lib/class-config";
 import { applyEvent } from "@/lib/workout-stream";
-import { EMPTY_WORKOUT, type ClassCheck, type ClassConfig, type QA, type ReportMeta, type Workout } from "@/lib/types";
+import { EMPTY_WORKOUT, type ClassCheck, type ClassConfig, type QA, type Workout } from "@/lib/types";
 import { QuestionList, collectAnswers, NO_ANSWERS, type Answers } from "@/components/QuestionList";
-import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle, Field } from "@/components/ui";
+import { Alert, BtnPrimary, BtnSecondary, Card, CardTitle } from "@/components/ui";
 import { WorkoutScreen } from "@/components/WorkoutScreen";
-import { PlanWithAI } from "@/components/PlanWithAI";
 import { SettingsFields } from "@/components/SettingsFields";
 
 /** The teacher's AI check in progress: what the AI said, and the answers so far. */
@@ -25,13 +27,15 @@ interface CheckState extends ClassCheck {
 }
 
 
-export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
+export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfig }: {
   code: string;
   initialConfig: ClassConfig;
-  /** "personal": a student's own training class — no sample preview, no class report. */
+  /** "personal": a student's own training class — no sample preview. */
   kind: "class" | "personal";
   /** Editing one session (YYYY-MM-DD) instead of the class's default settings. */
   sessionDate?: string;
+  /** The class's saved config, so the AI check reads the shared background too. */
+  classConfig?: ClassConfig;
 }) {
   const personal = kind === "personal";
   // Older summaries still state a calorie target; don't show one that no longer applies.
@@ -51,12 +55,6 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
   const [sampleStreaming, setSampleStreaming] = useState(false);
   const [sampleError, setSampleError] = useState("");
   const sampleAbortRef = useRef<AbortController | null>(null);
-
-  const [report, setReport] = useState<string | null>(null);
-  const [reportMeta, setReportMeta] = useState<ReportMeta | null>(null);
-  const [reportMsg, setReportMsg] = useState("");
-  const [reportLoading, setReportLoading] = useState(false);
-  const [reportError, setReportError] = useState("");
 
 
   function cfgSet<K extends keyof ClassConfig>(key: K, value: ClassConfig[K]) {
@@ -97,7 +95,9 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
   async function runCheck(cfg: ClassConfig, round: number) {
     setChecking(true); setCheckError(""); setSaveMsg(""); setError("");
     try {
-      const result = await apiClarifyClass(cfg, round, personal);
+      // The check also reads the class's background and research (they live on the class).
+      const shared = classConfig ?? cfg;
+      const result = await apiClarifyClass({ ...cfg, background: shared.background, sources: shared.sources }, round, personal);
       setCheck({ ...result, round, answers: NO_ANSWERS });
     } catch (e) {
       setCheck(null);
@@ -175,22 +175,9 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
     setSample(null); setSampleStreaming(false);
   }
 
-  // ── Today's report ──────────────────────────────────────────
-
-  async function generateDayReport() {
-    setReportLoading(true); setReportError(""); setReport(null); setReportMeta(null); setReportMsg("");
-    try {
-      const { report: r, meta, message } = await apiGenerateReport(code);
-      if (!r) { setReportMsg(message || "No reviews yet."); }
-      else { setReport(r); setReportMeta(meta ?? null); }
-    } catch (e) {
-      setReportError(e instanceof Error ? e.message : String(e));
-    }
-    setReportLoading(false);
-  }
-
   return (
     <>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5 lg:items-start">
       <Card>
         <CardTitle>{personal ? "Workout Parameters" : sessionDate ? "Session Settings" : "Default Settings"}</CardTitle>
         {!personal && !sessionDate && (
@@ -200,10 +187,13 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
         )}
 
         <SettingsFields config={config} onChange={cfgSet} />
+      </Card>
 
+      <div className="lg:sticky lg:top-16">
         {(config.summary || (config.clarifications?.length ?? 0) > 0) && (
-          <Field label="What the AI knows about this class">
-            <div className="bg-surface2 border border-border rounded-lg px-4 py-3.5">
+          <Card>
+            <CardTitle>What the AI knows</CardTitle>
+            <div className="-mt-2">
               {config.summary && (
                 <div className="text-[14px] leading-[1.55] mb-1">{config.summary}</div>
               )}
@@ -224,14 +214,8 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
                 </div>
               ))}
             </div>
-          </Field>
+          </Card>
         )}
-      </Card>
-
-      {/* The brief and pinned research (docs/03), teacher classes only. */}
-      {!personal && (
-        <PlanWithAI config={config} onChange={(patch) => setConfig((c) => ({ ...c, ...patch }))} sessionDate={sessionDate} />
-      )}
 
       {check ? (
         <Card style={{ borderColor: "var(--accent2)" }}>
@@ -290,6 +274,8 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
       )}
       {error && <Alert type="error">{error}</Alert>}
       {saveMsg && <Alert type="success">{saveMsg}</Alert>}
+      </div>
+      </div>
 
       {saveMsg && !sample && !personal && (
         <BtnSecondary style={{ marginTop: 12 }} onClick={previewSample}>
@@ -327,41 +313,6 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate }: {
       )}
       {sampleError && <Alert type="error">{sampleError}</Alert>}
 
-      {/* Today's report (teacher classes only, on the class page) */}
-      {!personal && !sessionDate && <div className="mt-8">
-        <div className="font-display text-[22px] font-bold uppercase tracking-[1px] mb-3">
-          Today&apos;s Workout Report
-        </div>
-        <BtnSecondary onClick={generateDayReport} disabled={reportLoading}>
-          {reportLoading ? "Generating…" : "Generate Today's Report"}
-        </BtnSecondary>
-
-        {reportMsg && (
-          <div className="text-muted text-[14px] mt-3">{reportMsg}</div>
-        )}
-
-        {reportMeta && (
-          <div className="flex gap-6 mt-4 mb-2 flex-wrap">
-            {[
-              [reportMeta.total, "Responses"],
-              [`${reportMeta.avgRating} / 5`, "Avg Rating"],
-            ].map(([val, lbl]) => (
-              <div key={lbl}>
-                <div className="font-display text-[28px] font-bold text-accent2 leading-none">{val}</div>
-                <div className="text-[11px] text-muted uppercase tracking-[0.8px] mt-0.5">{lbl}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {report && (
-          <div className="bg-surface2 border border-border rounded-xl p-[18px] mt-2 text-[14px] leading-[1.7] whitespace-pre-wrap">
-            {report}
-          </div>
-        )}
-
-        {reportError && <Alert type="error">{reportError}</Alert>}
-      </div>}
     </>
   );
 }

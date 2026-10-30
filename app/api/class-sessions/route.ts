@@ -6,12 +6,16 @@ import { clampConfig, cleanSessionName } from "@/lib/class-config";
 import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
 import { getClassByCode, getSessionByDate, type ClassInfo } from "@/lib/class-access";
 import { addDays, isDateKey, schoolDate } from "@/lib/time";
+import type { ClassConfig } from "@/lib/types";
 
 // Plan, edit and delete a teacher class's dated sessions (docs/02-sessions.md).
 // Only the class's owner may, and only for teacher classes: personal classes
 // keep one set of settings.
 
 const MAX_DAYS_AHEAD = 365;
+
+/** A session keeps its settings and specifics; the background and research live on the class. */
+const forSession = (c: ClassConfig): ClassConfig => ({ ...c, background: "", sources: [] });
 
 type Caller = Awaited<ReturnType<typeof callerFromRequest>>;
 type Owned = { cls: ClassInfo; date: string; body: Record<string, unknown>; withCookies: Caller["withCookies"] };
@@ -52,8 +56,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Pick today or a day in the next year." }, { status: 400 });
   }
 
-  // Copying a session keeps its name and AI check: they describe the same settings.
-  let config = cls.config;
+  // Copying a session keeps its name, AI check and specifics: they describe the
+  // same day plan. Starting from the defaults starts with no specifics.
+  let config: ClassConfig = { ...cls.config, specifics: "" };
   let name = cleanSessionName(body.name);
   if (isDateKey(body.copyFrom)) {
     const source = await getSessionByDate(cls.id, body.copyFrom);
@@ -66,7 +71,7 @@ export async function POST(request: NextRequest) {
     class_id: cls.id,
     session_date: date,
     name: name || null,
-    config: clampConfig(config as unknown as Record<string, unknown>),
+    config: forSession(clampConfig(config as unknown as Record<string, unknown>)),
   });
   if (error?.code === "23505") {
     return NextResponse.json({ error: "There's already a session on that day." }, { status: 409 });
@@ -78,15 +83,27 @@ export async function POST(request: NextRequest) {
   return withCookies(NextResponse.json({ date }));
 }
 
-/** Save a session's settings and/or rename it. */
+/**
+ * Save a session's settings, its specifics, and/or its name. Each save owns its
+ * fields (docs/03 §7): `config` keeps the specifics, `specifics` keeps the settings.
+ */
 export async function PATCH(request: NextRequest) {
   const owned = await ownedSession(request);
   if (owned instanceof NextResponse) return owned;
   const { cls, date, body, withCookies } = owned;
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  // Only known keys, clamped (lib/class-config.ts), so nobody can widen the limits.
-  if (body.config && typeof body.config === "object") patch.config = clampConfig(body.config as Record<string, unknown>);
+  if ((body.config && typeof body.config === "object") || typeof body.specifics === "string") {
+    const current = await getSessionByDate(cls.id, date);
+    if (!current) return NextResponse.json({ error: "That session no longer exists." }, { status: 404 });
+    // Only known keys, clamped (lib/class-config.ts), so nobody can widen the limits.
+    let config: ClassConfig = current.config;
+    if (body.config && typeof body.config === "object") {
+      config = { ...clampConfig(body.config as Record<string, unknown>), specifics: current.config.specifics ?? "" };
+    }
+    if (typeof body.specifics === "string") config = clampConfig({ ...config, specifics: body.specifics });
+    patch.config = forSession(config);
+  }
   if (typeof body.name === "string") patch.name = cleanSessionName(body.name) || null;
 
   const { data, error } = await createServerClient()
