@@ -1,7 +1,7 @@
 "use client";
 
 // Today's report for a teacher class: the AI reads the day's anonymous ratings
-// and comments and summarizes them. Lives in the class page's Students tab.
+// and comments and summarizes them. Lives in the class page's Today panel.
 import { useState } from "react";
 import { apiGenerateReport } from "@/lib/api";
 import type { ReportMeta } from "@/lib/types";
@@ -28,7 +28,7 @@ export function DayReport({ code }: { code: string }) {
 
   return (
     <div>
-      <h2 className="t-section mb-3">Today&apos;s workout report</h2>
+      <h3 className="t-card mb-3">Today&apos;s report</h3>
       <BtnSecondary onClick={generate} disabled={loading}>{loading ? "Generating…" : "Generate today's report"}</BtnSecondary>
       {msg && <div className="text-muted text-[14px] mt-3">{msg}</div>}
       {meta && (

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Star, Zap } from "lucide-react";
+import { Plus, Star, Zap } from "lucide-react";
 import { Card, Layout } from "@/components/ui";
 import { AccountBar } from "@/components/teacher/AccountBar";
-import { FileChips, NewClassForm, PresetList } from "@/components/teacher/TeacherControls";
+import { FileChips, PresetList } from "@/components/teacher/TeacherControls";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
 import { classLabel, dayKey, dayLabel, loadClasses, loadFiling, loadPresets, loadReviews, loadWorkouts } from "@/lib/teacher-data";
 
@@ -54,7 +54,12 @@ export default async function TeacherHome() {
       <h1 className="t-page mb-2">Your classes</h1>
       <div className="text-muted text-[15px] mb-6">Each class has its own code. Students sign in with their Mitty account and enter it.</div>
 
-      <div className="mb-3"><NewClassForm presets={presets} /></div>
+      <Link
+        href="/teacher/new"
+        className="flex items-center justify-center gap-2 w-full bg-accent text-bg rounded-lg px-7 py-3.5 font-display text-[20px] font-bold uppercase tracking-[0.5px] no-underline mb-3"
+      >
+        <Plus className="icon" /> New class
+      </Link>
       <Link
         href="/teacher/workout"
         className="flex items-center justify-center gap-2 w-full bg-surface2 text-text border border-border rounded-lg px-6 py-3 font-body text-[15px] font-medium no-underline mb-6 hover:border-accent"

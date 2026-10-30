@@ -2,20 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Star, Zap } from "lucide-react";
+import { ArrowLeft, Monitor, Star, Zap } from "lucide-react";
 import { Card, CardTitle, Layout } from "@/components/ui";
 import { ClassEditor } from "@/components/ClassEditor";
 import { AIBackgroundCard } from "@/components/AIContext";
-import { DayReport } from "@/components/DayReport";
+import { TodayPanel } from "@/components/teacher/TodayPanel";
 import { Tabs } from "@/components/Tabs";
 import { ArchiveToggle, CopyButton, FileToggle, LabelEditor, PlanSessionForm } from "@/components/teacher/TeacherControls";
 import { getAccount, isTeacherAccount } from "@/lib/supabase-auth";
 import { addDays, schoolDate, weekdayOf } from "@/lib/time";
 import type { ClassSession } from "@/lib/types";
 import {
-  classLabel, dayKey, dayLabel, loadClass, loadFiling, loadPresets, loadReviews, loadRoster, loadSessions, loadWorkouts, loadWorkoutsByIds, timeLabel,
+  classLabel, dayKey, dayLabel, loadClass, loadFiling, loadPresets, loadReviews, loadRoster, loadSessions, loadWorkouts, loadWorkoutsByIds, longDayLabel, timeLabel,
   type WorkoutRow,
 } from "@/lib/teacher-data";
+import { DEFAULT_CONFIG } from "@/lib/class-config";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Class — PE.AI", robots: { index: false } };
@@ -168,6 +169,12 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
           <div className="flex justify-center gap-2 flex-wrap">
             <CopyButton text={code} label="Copy code" />
             <CopyButton text={studentLink} label="Copy student link" />
+            <Link
+              href={`/classes/${code}/projector`}
+              className="inline-flex items-center gap-1.5 bg-[rgba(200,255,0,0.1)] border border-[rgba(200,255,0,0.3)] text-accent px-4 py-2 rounded-md text-[13px] font-semibold no-underline"
+            >
+              <Monitor className="icon" /> Projector
+            </Link>
           </div>
           <div className="text-muted text-[12px] mt-3">Students sign in with their Mitty account, then enter the code.</div>
         </div>
@@ -234,7 +241,6 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
         )}
       </section>
       <div className="flex flex-col gap-10">
-        <DayReport code={code} />
         <section>
           <h2 className={heading}>Ratings</h2>
           <div className="text-muted text-[14px] mb-4">What students said in the last 14 days.</div>
@@ -274,6 +280,16 @@ export default async function OwnerClassPage({ params, searchParams }: { params:
   return (
     <Layout backHref={home} backLabel="Classes" wide>
       <div className="mb-6 md:max-w-[620px]"><LabelEditor code={code} label={cls.label ?? ""} /></div>
+      {!cls.archived && (
+        <TodayPanel
+          code={code}
+          dateLabel={longDayLabel(today)}
+          session={todaySession && { date: todaySession.session_date, name: todaySession.name ?? "" }}
+          settings={{ ...DEFAULT_CONFIG, ...(todaySession?.config ?? cls.config) }}
+          students={roster.map((r) => ({ userId: r.user_id, name: r.name, today: perStudent.get(r.user_id)?.today ?? 0 }))}
+          ratings={reviews.filter((r) => dayKey(r.created_at) === today).map((r) => r.rating)}
+        />
+      )}
       <Tabs
         initial={(await searchParams).tab}
         tabs={[
