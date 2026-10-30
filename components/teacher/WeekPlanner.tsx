@@ -17,6 +17,9 @@ export interface WeekDay {
   session: { name: string; summary: string } | null;
 }
 
+/** Matches the copy route's limit. */
+const MAX_COPIES = 60;
+
 const fmt = (key: string, opts: Intl.DateTimeFormatOptions) =>
   new Date(`${key}T12:00:00Z`).toLocaleDateString("en-US", { ...opts, timeZone: "UTC" });
 
@@ -56,7 +59,7 @@ export function WeekPlanner({ code, today, weekStart, thisWeek, days, otherClass
       setPlanning(null);
     }
   }
-  if (planning && !refreshing && days.some((d) => d.date === planning && d.session)) setPlanning(null);
+  if (planning && !refreshing && !days.some((d) => d.date === planning && !d.session)) setPlanning(null);
 
   return (
     <div className="mb-6">
@@ -101,6 +104,7 @@ export function WeekPlanner({ code, today, weekStart, thisWeek, days, otherClass
                   <button
                     type="button"
                     onClick={() => { setCopying(d); setMsg(""); setError(""); }}
+                    aria-label={`Copy ${fmt(d.date, { weekday: "long" })}'s session`}
                     className="mt-auto pt-2 self-start inline-flex items-center gap-1 bg-transparent border-0 p-0 text-[13px] font-semibold text-accent cursor-pointer"
                   >
                     <Copy className="icon" /> Copy…
@@ -114,6 +118,7 @@ export function WeekPlanner({ code, today, weekStart, thisWeek, days, otherClass
                       type="button"
                       onClick={() => plan(d.date)}
                       disabled={busyDate !== null}
+                      aria-label={`Plan a session on ${fmt(d.date, { weekday: "long" })}`}
                       className="mt-auto pt-2 self-start inline-flex items-center gap-1 bg-transparent border-0 p-0 text-[13px] font-semibold text-accent cursor-pointer disabled:opacity-45"
                     >
                       <Plus className="icon" /> {busyDate === d.date ? "Planning…" : "Plan"}
@@ -126,7 +131,7 @@ export function WeekPlanner({ code, today, weekStart, thisWeek, days, otherClass
         })}
       </div>
       {msg && <div role="status" className="text-[13px] text-accent mt-2">{msg}</div>}
-      {error && <div className="text-[13px] text-danger mt-2">{error}</div>}
+      {error && <div role="alert" className="text-[13px] text-danger mt-2">{error}</div>}
 
       {copying && (
         <CopyDialog
@@ -159,10 +164,13 @@ function CopyDialog({ code, today, day, week, otherClasses, onClose, onDone }: {
   const [error, setError] = useState("");
 
   const weekday = fmt(day.date, { weekday: "long" });
-  const dates = [...days, ...Array.from({ length: weeks }, (_, i) => addDays(day.date, 7 * (i + 1)))];
+  // Only days from today on: sessions can't be planned in the past, so a past
+  // source day is copied to other classes only through its future repeats.
+  const dates = [...days, ...Array.from({ length: weeks }, (_, i) => addDays(day.date, 7 * (i + 1)))].filter((d) => d >= today);
   const targets = [code, ...classes].flatMap((c) =>
-    [day.date, ...dates].filter((d) => !(c === code && d === day.date)).map((d) => ({ code: c, date: d }))
+    [day.date, ...dates].filter((d) => d >= today && !(c === code && d === day.date)).map((d) => ({ code: c, date: d }))
   );
+  const tooMany = targets.length > MAX_COPIES;
   const labelFor = new Map(otherClasses.map((c) => [c.code, c.label]));
 
   function toggle<T>(set: Set<T>, v: T, update: (s: Set<T>) => void) {
@@ -195,7 +203,7 @@ function CopyDialog({ code, today, day, week, otherClasses, onClose, onDone }: {
       actions={
         <>
           <button type="button" className={dialogCancel} onClick={onClose}>Cancel</button>
-          <button type="button" className={dialogConfirm()} onClick={copy} disabled={busy || targets.length === 0}>
+          <button type="button" className={dialogConfirm()} onClick={copy} disabled={busy || targets.length === 0 || tooMany}>
             {busy ? "Copying…" : targets.length ? `Copy to ${targets.length}` : "Copy"}
           </button>
         </>
@@ -233,7 +241,10 @@ function CopyDialog({ code, today, day, week, otherClasses, onClose, onDone }: {
             </div>
           </>
         )}
-        <div className="text-[12px] text-muted mt-4">Days that already have a session keep theirs.</div>
+        <div className="text-[12px] text-muted mt-4">
+          Days that already have a session keep theirs.{day.date < today && " Past days are skipped."}
+        </div>
+        {tooMany && <div role="alert" className="text-[13px] text-danger mt-2">That&apos;s {targets.length} copies; the most at once is {MAX_COPIES}. Pick fewer weeks or classes.</div>}
         {error && <div className="text-[13px] text-danger mt-2">{error}</div>}
       </div>
     </Dialog>
