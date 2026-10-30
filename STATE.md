@@ -20,29 +20,34 @@ each PR itself and merges it, then checks production signed out. The tests are:
 The rig and harness live in the session scratchpad, never in the repo. Their
 pattern is in DECISIONS.
 
-## Merged today (2026-10-29)
+## Merged today (2026-10-29), all live and checked signed out
 - #13 AI background on the class, session specifics, research optional, tabs.
 - #14 named setting presets (copied in, apply to all classes).
 - #15 one icon set (lucide-react), real dialogs, sentence-case headings.
 - #16 student UI: compact workout page with a Start bar, Go mode by exercise,
-  same as last time (device-only), demo links. Review fixes included.
-
-## Open
+  same as last time (device-only), demo links.
 - #17 teacher UI: Today panel, projector + QR, three-step setup, unsaved warning.
-- #18 week view: Mon–Fri grid, copy a session to days/weeks/classes (stacked on #17).
-Both were tested in the rig; #18's copy route passes the harness 13/13. An
-independent review runs before merge.
+- #18 week view: Mon–Fri grid, copy a session to days/weeks/classes, this week
+  across classes (copy route: harness 13/13).
+An independent review read #16 and #17/#18 before merge. Its real findings
+were fixed first. They included a "Leave without saving?" dialog that was
+invisible in a hidden tab yet blocked the page, and past-day copies failing.
+ZZ test classes were deleted afterwards.
 
 ## Not verified by Claude
 - Real devices: wake lock, chime, share sheet, add to home screen, the fixed
   bottom bar with the iOS keyboard up, projector QR scanned by a phone.
 - Signed-in production pages (Claude can't sign in; the rig renders the same code).
 
+## Known limits (by design or deferred)
+- The browser Back button and in-code navigations (e.g. "+ Plan" in the form,
+  Archive) don't trigger the unsaved-edits warning.
+- A copied session carries its AI-check summary to other classes (same settings).
+
 ## Next action
-1. Merge #17 then #18 after review and checks; signed-out production checks.
-2. Ryan looks at production: /teacher (New class, This week), a class page
+1. Ryan looks at production: /teacher (New class, This week), a class page
    (Today panel, Projector, Sessions week grid), a student workout + Go mode.
-3. Ask the PE teacher / Mitty tech office about a school data agreement
+2. Ask the PE teacher / Mitty tech office about a school data agreement
    (open since 2026-10-27).
 
 The full visual revamp stays parked on branch `ui-revamp` (classic UI frozen
