@@ -4,7 +4,8 @@ import { verifySecret } from "@/lib/auth";
 import { checkRateLimit, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 import { clampConfig, cleanSessionName } from "@/lib/class-config";
 import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
-import { getClassByCode, getSessionByDate, type ClassInfo } from "@/lib/class-access";
+import { getClassByCode, getPreset, getSessionByDate, type ClassInfo } from "@/lib/class-access";
+import { applyPreset } from "@/lib/presets";
 import { addDays, isDateKey, schoolDate } from "@/lib/time";
 import type { ClassConfig } from "@/lib/types";
 
@@ -60,7 +61,13 @@ export async function POST(request: NextRequest) {
   // same day plan. Starting from the defaults starts with no specifics.
   let config: ClassConfig = { ...cls.config, specifics: "" };
   let name = cleanSessionName(body.name);
-  if (isDateKey(body.copyFrom)) {
+  if (typeof body.copyFrom === "string" && body.copyFrom.startsWith("preset:")) {
+    // A preset on top of the defaults. Its AI background, if any, belongs to the class.
+    const preset = await getPreset(cls.owner_id ?? "", body.copyFrom.slice("preset:".length));
+    if (!preset) return NextResponse.json({ error: "That preset no longer exists." }, { status: 404 });
+    config = applyPreset(config, preset.fields, { background: false });
+    name ||= preset.name;
+  } else if (isDateKey(body.copyFrom)) {
     const source = await getSessionByDate(cls.id, body.copyFrom);
     if (!source) return NextResponse.json({ error: "The session to copy from no longer exists." }, { status: 404 });
     config = source.config;

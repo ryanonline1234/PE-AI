@@ -16,6 +16,7 @@ import type {
   WorkoutEvent,
 } from "@/lib/types";
 import { drainLines } from "@/lib/workout-stream";
+import type { PresetFields } from "@/lib/presets";
 
 const SECRET = process.env.NEXT_PUBLIC_INTERNAL_API_SECRET;
 
@@ -134,8 +135,8 @@ async function postJson<T>(url: string, body: unknown, method = "POST"): Promise
   return data as T;
 }
 
-/** Teachers get a class; students get a personal class. The server decides. */
-export const apiCreateClass = (label: string) => postJson<{ code: string }>("/api/classes", { label });
+/** Teachers get a class (optionally starting from a preset); students get a personal class. */
+export const apiCreateClass = (label: string, presetId?: string) => postJson<{ code: string }>("/api/classes", { label, presetId });
 
 /** A teacher's own-workout space (their one personal class), created on first use. */
 export const apiSoloClass = () => postJson<{ code: string }>("/api/classes", { solo: true });
@@ -177,3 +178,16 @@ export const apiSaveStudentBrief = (brief: string) =>
   postJson<{ brief: string; trimmed: boolean }>("/api/student-brief", { brief });
 
 export const apiDeleteStudentBrief = () => postJson<{ ok: true }>("/api/student-brief", {}, "DELETE");
+
+// ── Setting presets (teachers; DECISIONS 2026-10-28) ──────────
+
+/** Save a preset under a name (same name updates it); optionally copy it into every class. */
+export const apiSavePreset = (name: string, fields: PresetFields, applyToAll: boolean) =>
+  postJson<{ id: string; updated: boolean; applied: number }>("/api/presets", { name, fields, applyToAll });
+
+export const apiRenamePreset = (id: string, name: string) => postJson<{ ok: true }>("/api/presets", { id, name }, "PATCH");
+
+export const apiDeletePreset = (id: string) => postJson<{ ok: true }>("/api/presets", { id }, "DELETE");
+
+/** Copy a preset into every active class (default settings + AI background). */
+export const apiApplyPresetToAll = (id: string) => postJson<{ applied: number }>("/api/presets/apply", { id });

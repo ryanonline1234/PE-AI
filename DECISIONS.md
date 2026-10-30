@@ -281,3 +281,21 @@ Ryan went with the recs (docs/03 §7):
   layout, not the parked visual revamp.
 - Next (PR B): named presets, copied in, with "apply to all my classes"
   writing class default settings only.
+
+## 2026-10-28 — Named setting presets, copied in
+Ryan asked for settings to be smoother to set up and for "certain settings to
+be universal... apply to every class, and then name the setting"; he went with
+the recs:
+
+- A **preset** is any mix of duration, equipment, intensity, focus, custom
+  instructions and AI background, saved under a name (same name = update).
+- **Copied in, not linked.** Apply it in a class's or session's Settings tab
+  (then Save as usual), start a new class or session from it, or "Apply to all
+  classes" (active teacher classes' default settings + background; planned
+  sessions untouched, archived classes skipped). Editing one class later never
+  touches the preset; re-applying is how changes spread. A change to the
+  settings drops the stale AI-check summary.
+- A preset's AI background lands on the class (applied in the class editor it
+  saves straight to the class; sessions don't hold a background).
+- New table `setting_presets` (migration 20261028000010, applied), unique per
+  owner and name, max 30 per teacher.

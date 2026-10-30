@@ -54,6 +54,7 @@ export default function PrivacyPage() {
             <li><strong>Class settings:</strong> duration, intensity, focus, equipment, instructions, the brief and
               pinned research findings, and the AI&apos;s confirmed summary and your answers to its questions. Sessions
               you plan store the same settings for their date.</li>
+            <li><strong>Presets:</strong> named sets of settings you save, so you can reuse them across classes.</li>
             <li><strong>Research:</strong> topics you search are sent to Anthropic, whose web search looks only at the
               trusted sites the app lists. Results aren&apos;t stored unless you pin them.</li>
             <li><strong>Your workouts:</strong> sample workouts you preview, workouts you make for yourself (with the

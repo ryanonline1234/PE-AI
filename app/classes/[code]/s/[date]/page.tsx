@@ -8,7 +8,7 @@ import { Tabs } from "@/components/Tabs";
 import { DeleteSessionButton, SessionNameEditor } from "@/components/teacher/TeacherControls";
 import { getAccount } from "@/lib/supabase-auth";
 import { isDateKey, schoolDate } from "@/lib/time";
-import { classLabel, dayLabel, loadClass, loadSession, longDayLabel } from "@/lib/teacher-data";
+import { classLabel, dayLabel, loadClass, loadPresets, loadSession, longDayLabel } from "@/lib/teacher-data";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Session — PE.AI", robots: { index: false } };
@@ -28,7 +28,7 @@ export default async function SessionPage({ params, searchParams }: { params: Pa
   const cls = await loadClass(code);
   if (!cls || cls.owner_id !== account.id || cls.kind !== "class" || !isDateKey(date)) notFound();
   // A deleted (or never planned) session: back to the class, where it can be planned.
-  const session = await loadSession(cls.id, date);
+  const [session, presets] = await Promise.all([loadSession(cls.id, date), loadPresets()]);
   if (!session) redirect(`/classes/${code}`);
 
   const isToday = date === schoolDate();
@@ -60,7 +60,7 @@ export default async function SessionPage({ params, searchParams }: { params: Pa
           },
           {
             id: "settings", label: "Settings",
-            content: <ClassEditor key={session.id} code={code} initialConfig={session.config} kind="class" sessionDate={date} classConfig={cls.config} />,
+            content: <ClassEditor key={session.id} code={code} initialConfig={session.config} kind="class" sessionDate={date} classConfig={cls.config} presets={presets} />,
           },
         ]}
       />

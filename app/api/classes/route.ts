@@ -6,7 +6,8 @@ import { checkRateLimit, rateLimitedResponse, WINDOW } from "@/lib/rate-limit";
 import { clampConfig } from "@/lib/class-config";
 import { isTeacherAccount } from "@/lib/supabase-auth";
 import { callerFromRequest, signInRequired } from "@/lib/teacher-auth";
-import { MAX_PERSONAL_CLASSES } from "@/lib/class-access";
+import { getPreset, MAX_PERSONAL_CLASSES } from "@/lib/class-access";
+import { applyPreset } from "@/lib/presets";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const newCode = () => Array.from({ length: 6 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
@@ -61,12 +62,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // A teacher can start a class from one of their presets (copied in).
+  const preset = kind === "class" ? await getPreset(account.id, body.presetId) : null;
+  const config = preset ? applyPreset(clampConfig({}), preset.fields, { background: true }) : clampConfig({});
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = newCode();
     const { error } = await supabase.from("pe_classes").insert({
       code,
       kind,
-      config: clampConfig({}),
+      config,
       owner_id: account.id,
       label: solo ? SOLO_LABEL : cleanLabel(body.label) || (kind === "personal" ? "My Training" : null),
     });

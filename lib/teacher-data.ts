@@ -4,6 +4,7 @@
 import { createUserClient } from "@/lib/supabase-auth";
 import { dateKeyInTimeZone, DEFAULT_TIME_ZONE } from "@/lib/time";
 import type { ClassConfig, ClassSession } from "@/lib/types";
+import type { SettingPreset } from "@/lib/presets";
 
 export const TZ = DEFAULT_TIME_ZONE;
 
@@ -197,4 +198,14 @@ export async function loadSession(classId: string, date: string): Promise<ClassS
     .eq("session_date", date)
     .maybeSingle();
   return (data as ClassSession | null) ?? null;
+}
+
+/** The caller's setting presets, by name (RLS: owner reads). */
+export async function loadPresets(): Promise<SettingPreset[]> {
+  const supabase = await createUserClient();
+  const { data } = await supabase
+    .from("setting_presets")
+    .select("id, name, fields, updated_at")
+    .order("name", { ascending: true });
+  return (data ?? []) as SettingPreset[];
 }
