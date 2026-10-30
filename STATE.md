@@ -41,16 +41,16 @@ trusted-site research with pinnable findings, students' "My sport" briefs.
 Not yet exercised by a real sign-in (no teacher "Just me" space existed after
 Ryan's preview test).
 
-**Open, stacked:**
-- **PR #13 (`ai-background-tabs`)**, docs/03 §7: "Background for the AI" on
-  the class (live for every session) + session specifics asked after it;
-  research optional; tabs at 768px+ on the teacher class and session pages.
-  Harness 15/15, sessions 34/34, own workout 11/11, tabs checked at 1280/820/375.
-- **PR #14 (`presets`, based on #13)**: named setting presets, copied in;
-  apply in Settings, start a class/session from one, or apply to all classes.
-  Table `setting_presets` (migration 20261028000010, applied). Harness 16/16
-  (Ryan's own classes snapshotted and restored exactly), checked at 1280/375.
-  Merge #13 first, then retarget #14 to main.
+**AI background + session specifics + tabs are live** (PR #13 merged
+2026-10-29, prod @ b506aed; signed-out checks passed). After Ryan's preview
+test no class had a saved background and no session had specifics, so those
+saves haven't been exercised signed in yet (the harness covered them, 15/15).
+
+**Open: PR #14 (`presets`)**, now based on main: named setting presets, copied
+in; apply in Settings, start a class/session from one, or apply to all
+classes. Table `setting_presets` (migration 20261028000010, applied). Harness
+16/16 (Ryan's own classes snapshotted and restored exactly), checked at
+1280/375. Also carries docs/04-ui-ideas.md (UI brainstorm).
 NOT verified by Claude: the signed-in pages (Ryan).
 
 The UI revamp is parked on branch `ui-revamp` (classic UI frozen as tag
@@ -87,8 +87,9 @@ and sw.js served; 404 for bad ids.
 - Keep-alive cron first run (12:00 UTC 2026-10-27).
 
 ## Next action
-1. Ryan tests PR #13 on its preview, then merges; retarget PR #14 to main,
-   test, merge.
+1. Ryan tests PR #14 on its preview (save a preset, start a class from it,
+   apply a test preset to all classes), then merges. Also save one class
+   background and one session's specifics so those paths run signed in.
 2. Ryan makes one own workout in production (/teacher → ⚡ Make a workout for
    myself) so the "Just me" path is exercised signed in.
 3. UI improvement brainstorm (2026-10-28) → Ryan picks what to build.
