@@ -25,7 +25,8 @@ export function useUnsavedGuard(dirty: boolean) {
       if (!(a instanceof HTMLAnchorElement) || a.target === "_blank" || a.hasAttribute("download")) return;
       const url = new URL(a.href, window.location.href);
       if (url.origin !== window.location.origin) return; // a full page load: the browser's prompt covers it
-      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+      // Same page with other ?week=/?tab=: a soft navigation keeps every editor and its edits.
+      if (url.pathname === window.location.pathname) return;
       e.preventDefault();
       e.stopImmediatePropagation();
       setPendingHref(url.pathname + url.search + url.hash);

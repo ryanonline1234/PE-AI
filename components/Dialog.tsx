@@ -3,7 +3,10 @@
 // In-page dialogs in place of the browser's confirm()/prompt() boxes (docs/04).
 // Built on <dialog>.showModal(): focus moves in and stays in, Escape closes, and
 // the page behind can't be clicked. Buttons always read Cancel, then the action.
+// Rendered into <body> (a portal): a dialog opened by an editor in a hidden tab
+// would otherwise be invisible yet still block the page (display:none ancestor).
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 export function Dialog({ title, children, onClose, actions }: {
@@ -19,7 +22,7 @@ export function Dialog({ title, children, onClose, actions }: {
     if (d && !d.open) d.showModal();
     return () => d?.close();
   }, []);
-  return (
+  return createPortal(
     <dialog
       ref={ref}
       aria-labelledby="dialog-title"
@@ -32,7 +35,8 @@ export function Dialog({ title, children, onClose, actions }: {
         {children && <div className="text-[14px] leading-[1.55] text-muted">{children}</div>}
         <div className="flex justify-end gap-2.5 mt-6">{actions}</div>
       </div>
-    </dialog>
+    </dialog>,
+    document.body
   );
 }
 

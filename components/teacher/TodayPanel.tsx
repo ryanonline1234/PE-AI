@@ -34,7 +34,7 @@ export function TodayPanel({ code, dateLabel, session, settings, students, ratin
     <section aria-label="Today" className="bg-surface border border-border border-t-[3px] border-t-accent rounded-xl p-5 mb-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <div className="t-eyebrow text-accent mb-1">Today · {dateLabel}</div>
+          <h2 className="t-eyebrow text-accent mb-1">Today · {dateLabel}</h2>
           <div className="t-card">
             {session ? (
               <Link href={`/classes/${code}/s/${session.date}`} className="text-text no-underline hover:text-accent">
@@ -77,8 +77,9 @@ export function TodayPanel({ code, dateLabel, session, settings, students, ratin
           No one has joined yet. Put the code on the projector so students can scan in.
         </div>
       ) : (
-        <details className="mt-4 group" open={students.length <= 40 || undefined}>
-          <summary className="t-label cursor-pointer select-none">Who&apos;s done</summary>
+        <details className="mt-4 group">
+          {/* Closed by default: names stay off a laptop that's mirrored to the projector. */}
+          <summary className="t-label cursor-pointer select-none">Who&apos;s done ({done.length} of {students.length})</summary>
           <div className="flex flex-wrap gap-1.5 mt-2.5">
             {notYet.map((s) => (
               <span key={s.userId} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface2 text-muted px-2.5 py-1 text-[13px]">
