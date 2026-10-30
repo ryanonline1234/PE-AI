@@ -66,6 +66,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
   const [sample, setSample] = useState<Workout | null>(null);
   const [sampleId, setSampleId] = useState<string | null>(null);
   const [sampleStreaming, setSampleStreaming] = useState(false);
+  const [sampleRun, setSampleRun] = useState(0); // remounts the sample view per preview
   const [sampleError, setSampleError] = useState("");
   const sampleAbortRef = useRef<AbortController | null>(null);
 
@@ -178,7 +179,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
     sampleAbortRef.current?.abort();
     const controller = new AbortController();
     sampleAbortRef.current = controller;
-    setSample(EMPTY_WORKOUT); setSampleId(null); setSampleStreaming(true); setSampleError("");
+    setSample(EMPTY_WORKOUT); setSampleId(null); setSampleStreaming(true); setSampleError(""); setSampleRun((n) => n + 1);
     let latest: Workout = EMPTY_WORKOUT;
     let failed = "";
     try {
@@ -343,6 +344,7 @@ export function ClassEditor({ code, initialConfig, kind, sessionDate, classConfi
             {sampleId && <>Saved to <Link href="/teacher" className="text-accent">your workouts</Link>.</>}
           </div>
           <WorkoutScreen
+            key={sampleRun}
             workout={sample}
             code={code}
             studentName=""
