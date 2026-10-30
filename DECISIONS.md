@@ -324,3 +324,35 @@ empty-state and accessibility passes.
   in globals.css, all sentence case. ALL CAPS stays for the big moments: the
   landing hero, the workout title, Go mode, the class code and the main lime
   buttons. Same tokens, fonts and colors; the parked visual revamp is still parked.
+
+## 2026-10-29 — Student and teacher UI from docs/04 (how each was built)
+- **Workout page (S1):** rows that open for the tip, how-to and a demo link; a
+  bar pinned to the bottom with Start and a ⋯ panel (change it / make my own,
+  share, print). Print shows every detail; rows don't split across pages.
+  Measured at 375px: about 1,650 px tall, down from about 6,400.
+- **Go mode (S2):** counted by exercise ("Exercise 3 of 7 · Set 2 of 3"), a
+  Next up line, a bar split into warm-up / main / cool-down sized by estimated
+  time (`sectionSpans` in lib/go-mode.ts).
+- **Same as last time (S3):** fitness level and preferences in localStorage,
+  keyed per account (shared iPads), read with useSyncExternalStore. The injuries
+  box is never kept. No server storage, so no new minors' data.
+- **Today panel (T1)** at the top of a teacher class; the AI report moved into it.
+  "Done" = the student generated a workout in this class today (school day).
+- **Projector (T2):** /classes/CODE/projector, QR for /c/CODE rendered server-side
+  (qrcode 1.5.4, SVG, dark on white for reliable scanning).
+- **Setup (T3):** /teacher/new, three steps, the class created at step 1 and each
+  step addressable (?code=&step=) so a refresh resumes. No AI check in the
+  setup (smoothness first); it runs the next time Settings are saved.
+- **Unsaved-edits warning (T5):** beforeunload + a capture-phase link
+  interceptor with an in-page dialog (components/UnsavedGuard.tsx). The browser
+  Back button isn't covered (the App Router can't block it). Tabs keep panels
+  mounted, so switching tabs never loses edits.
+- **Week view (T4):** Mon–Fri grid per class (?week=), plan in one tap, and
+  `POST /api/class-sessions/copy` to copy a session to other days, weekly
+  repeats (≤ 8 weeks) and the teacher's other classes, max 60 at once; existing
+  sessions are kept and reported, never overwritten. /teacher shows this week
+  across classes (read-only).
+- **Reviews:** an independent review subagent read each of these PRs before
+  merge (Ryan doesn't preview). The student one found a dismissed share sheet
+  falling through to copy and a print page-break problem; both were fixed.
+

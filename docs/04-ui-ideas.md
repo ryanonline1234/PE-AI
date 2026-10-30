@@ -1,4 +1,10 @@
-# 04 — UI improvement ideas (brainstorm, not built)
+# 04 — UI improvement ideas
+
+> **Status 2026-10-29:** Ryan kept S1, S2, S3, S6, T1, T2, T3, T4, the
+> unsaved-edits warning (T5 without toasts), one icon set, real dialogs and
+> fewer all-caps headings, all built (PRs #15–#18, DECISIONS 2026-10-29). The
+> rest was dropped as not worthwhile: S4, S5, S7, T6, T7, toasts, the
+> empty-state and accessibility passes.
 
 _2026-10-28. Ryan asked for UI ideas on both sides to make PE.AI feel more
 professional and easier to use. Grounded in the current screens (reference
