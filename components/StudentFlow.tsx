@@ -5,9 +5,12 @@
 // server has checked the signed-in account may use the class, and by
 // /teacher/workout with `ownSettings`: a teacher's own workout, where the class
 // settings are filled in on the same form and sent with each generation.
-import { useRef, useState } from "react";
+// "Same as last time" (docs/04 S3) remembers the fitness level and preferences
+// on this device only; injuries are never remembered anywhere.
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { History, Target, Zap } from "lucide-react";
 import { apiGenerateWorkoutStream, apiSoloClass } from "@/lib/api";
 import { applyEvent } from "@/lib/workout-stream";
 import { EMPTY_WORKOUT, type AskQuestion, type ClassConfig, type FitnessLevel, type QA, type Workout } from "@/lib/types";
@@ -18,7 +21,48 @@ import { WorkoutScreen } from "@/components/WorkoutScreen";
 
 type View = "form" | "questions" | "workout";
 
-export function StudentFlow({ code, label, sessionName, config, firstName, backHref, hasSportBrief = false, ownSettings = false }: {
+const FITNESS: readonly (readonly [string, FitnessLevel])[] = [["Just starting out", "beginner"], ["Feeling good", "moderate"], ["Let's go hard", "advanced"]];
+
+/** Last time's answers, kept in this browser only (per account, for shared iPads). */
+interface LastAnswers { fitnessLevel: FitnessLevel; preferences: string }
+const lastKey = (accountId: string) => `peai:last-answers:${accountId}`;
+
+const LAST_CHANGED = "peai:last-answers";
+
+function subscribeLast(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(LAST_CHANGED, onChange);
+  return () => { window.removeEventListener("storage", onChange); window.removeEventListener(LAST_CHANGED, onChange); };
+}
+
+function rawLast(accountId: string): string | null {
+  try {
+    return localStorage.getItem(lastKey(accountId));
+  } catch {
+    return null; // Private mode or blocked storage: no "same as last time", nothing breaks.
+  }
+}
+
+function parseLast(raw: string | null): LastAnswers | null {
+  try {
+    const v = JSON.parse(raw ?? "null");
+    if (v && FITNESS.some(([, f]) => f === v.fitnessLevel) && typeof v.preferences === "string") {
+      return { fitnessLevel: v.fitnessLevel, preferences: v.preferences.slice(0, 300) };
+    }
+  } catch {
+    // A damaged entry is ignored and overwritten by the next workout.
+  }
+  return null;
+}
+
+function saveLast(accountId: string, v: LastAnswers) {
+  try {
+    localStorage.setItem(lastKey(accountId), JSON.stringify(v));
+    window.dispatchEvent(new Event(LAST_CHANGED));
+  } catch { /* see rawLast */ }
+}
+
+export function StudentFlow({ code, label, sessionName, config, firstName, accountId, backHref, hasSportBrief = false, ownSettings = false }: {
   /** null for a teacher's first own workout: the space is created on Generate. */
   code: string | null;
   label: string;
@@ -27,6 +71,8 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
   /** Today's settings: the session's, or the class defaults. Display only; the server re-resolves. */
   config: ClassConfig;
   firstName: string;
+  /** Keys "same as last time" to the signed-in account on this device. */
+  accountId: string;
   backHref: string;
   /** The student saved a sport brief (docs/03); the server adds it to the prompt. */
   hasSportBrief?: boolean;
@@ -42,6 +88,9 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
   const [limitations, setLimitations] = useState("");
   const [preferences, setPreferences] = useState("");
   const [regenerateHistory, setRegenerateHistory] = useState<string[]>([]);
+  // This browser's storage; the server render (and hydration) see nothing.
+  const lastRaw = useSyncExternalStore(subscribeLast, () => rawLast(accountId), () => null);
+  const last = useMemo(() => parseLast(lastRaw), [lastRaw]);
 
   // Streaming generation: the workout fills in event by event; `shareId`
   // arrives last, once the server has saved it. `generation` remounts the
@@ -64,7 +113,10 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
     router.push(backHref);
   }
 
-  async function generateWorkout(feedback = "", opts: { answers?: QA[]; skipQuestions?: boolean } = {}) {
+  async function generateWorkout(feedback = "", opts: { answers?: QA[]; skipQuestions?: boolean; form?: LastAnswers } = {}) {
+    // A fresh workout remembers the answers it used, on this device only.
+    const form = opts.form ?? { fitnessLevel, preferences };
+    if (!feedback) saveLast(accountId, form);
     // Accumulate regenerate feedback so context from earlier regenerations isn't
     // lost; a fresh generation (feedback === "") starts a new history.
     const history = feedback ? [...regenerateHistory, feedback] : [];
@@ -101,7 +153,7 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
         {
           code: useCode,
           config: ownSettings ? settings : undefined,
-          fitnessLevel, limitations, preferences,
+          fitnessLevel: form.fitnessLevel, limitations, preferences: form.preferences,
           regenerateFeedback: history.join("\n"),
           answers,
           skipQuestions: opts.skipQuestions,
@@ -151,7 +203,7 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
 
   if (view === "questions") return (
     <Layout onBack={() => setView("form")}>
-      <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">Quick Question</div>
+      <h1 className="t-page mb-2">Quick question</h1>
       <div className="text-muted text-[15px] mb-8">So your workout is safe for you. Tap an answer or type your own.</div>
       <Card>
         <QuestionList questions={questions} answers={questionAnswers} onChange={setQuestionAnswers} />
@@ -163,7 +215,7 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
           onClick={() => generateWorkout("", { answers: collectAnswers(questions, questionAnswers) })}
           disabled={collectAnswers(questions, questionAnswers).length === 0}
         >
-          ⚡ Build My Workout
+          <Zap className="icon" /> Build my workout
         </BtnPrimary>
       </div>
     </Layout>
@@ -186,9 +238,9 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
 
   return (
     <Layout onBack={leave}>
-      <div className="font-display text-[42px] font-black uppercase tracking-[-1px] mb-1">
-        {ownSettings ? "Your Own Workout" : <>Let&apos;s Build Your Workout</>}
-      </div>
+      <h1 className="t-page mb-2">
+        {ownSettings ? "Your own workout" : <>Let&apos;s build your workout</>}
+      </h1>
       {ownSettings ? (
         <>
           <div className="text-muted text-[15px] mb-8">Pick the settings, say how you feel, and get a workout just for you.</div>
@@ -207,8 +259,31 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
         </div>
       )}
       {hasSportBrief && (
-        <div className="text-muted text-[13px] mb-8">
-          ★ Your sport goals are included. <Link href="/me" className="text-accent">Edit them</Link>
+        <div className="text-muted text-[13px] mb-8 flex items-center gap-1.5">
+          <Target className="icon text-accent" /> Your sport goals are included. <Link href="/me" className="text-accent">Edit them</Link>
+        </div>
+      )}
+
+      {last && (
+        <div className="bg-surface border border-[rgba(200,255,0,0.35)] rounded-xl p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <History className="icon text-accent mt-0.5 !w-5 !h-5" />
+            <div className="min-w-0">
+              <div className="font-semibold text-[15px]">Same as last time?</div>
+              <div className="text-muted text-[13px] mt-0.5 break-words">
+                {FITNESS.find(([, f]) => f === last.fitnessLevel)?.[0]}{last.preferences ? ` · “${last.preferences}”` : ""}
+              </div>
+            </div>
+          </div>
+          <BtnPrimary
+            style={{ marginTop: 12 }}
+            onClick={() => { setFitnessLevel(last.fitnessLevel); setPreferences(last.preferences); void generateWorkout("", { form: last }); }}
+          >
+            <Zap className="icon" /> Build it the same way
+          </BtnPrimary>
+          <div className="text-[12px] text-muted leading-[1.5] mt-2">
+            Injuries are never remembered. If something hurts today, add it in the box below first.
+          </div>
         </div>
       )}
 
@@ -216,13 +291,13 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
         {ownSettings && <CardTitle>About you today</CardTitle>}
         <Field label="How fit do you feel today?">
           <div className="flex flex-wrap gap-2">
-            {([["Just Starting Out","beginner"],["Feeling Good","moderate"],["Let's Go Hard","advanced"]] as const).map(([l,v]) =>
+            {FITNESS.map(([l,v]) =>
               <Chip key={v} label={l} value={v} current={fitnessLevel} onChange={setFitnessLevel} />
             )}
           </div>
         </Field>
 
-        <Field label="Injuries or Limitations? (optional)">
+        <Field label="Injuries or limitations (optional)">
           <Textarea
             value={limitations}
             onChange={setLimitations}
@@ -230,7 +305,7 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
           />
         </Field>
 
-        <Field label="Personal Preferences (optional)">
+        <Field label="Personal preferences (optional)">
           <Textarea
             value={preferences}
             onChange={v => setPreferences(v.slice(0, 300))}
@@ -239,7 +314,7 @@ export function StudentFlow({ code, label, sessionName, config, firstName, backH
         </Field>
       </Card>
 
-      <BtnPrimary onClick={() => generateWorkout()}>⚡ Generate My Workout</BtnPrimary>
+      <BtnPrimary onClick={() => generateWorkout()}><Zap className="icon" /> Generate my workout</BtnPrimary>
       {error && <Alert type="error">{error}</Alert>}
     </Layout>
   );
